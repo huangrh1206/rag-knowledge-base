@@ -8,7 +8,6 @@ from src.config import Settings
 def test_settings_uses_documented_model_defaults(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr("src.config.load_dotenv", lambda: False)
     monkeypatch.setenv("RAG_API_KEY", "test-key")
     monkeypatch.delenv("RAG_CHAT_MODEL", raising=False)
     monkeypatch.delenv("RAG_EMBEDDING_MODEL", raising=False)

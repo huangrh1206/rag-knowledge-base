@@ -1,3 +1,7 @@
+from dataclasses import FrozenInstanceError
+
+import pytest
+
 from src.models import Answer, Chunk, Citation, Paragraph, SearchResult
 
 
@@ -44,3 +48,10 @@ def test_answer_keeps_citations_and_retrieval_results() -> None:
 
     assert answer.citations[0].source == "guide.docx"
     assert answer.retrieved_chunks[0].score == 0.91
+
+
+def test_shared_models_are_immutable() -> None:
+    paragraph = Paragraph("正文", "guide.docx", 1)
+
+    with pytest.raises(FrozenInstanceError):
+        paragraph.text = "修改后的正文"
