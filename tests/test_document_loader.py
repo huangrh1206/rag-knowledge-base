@@ -1,6 +1,8 @@
 from pathlib import Path
+from zipfile import ZIP_DEFLATED, ZipFile
 
 from docx import Document
+from docx.enum.style import WD_STYLE_TYPE
 import pytest
 
 from src.document_loader import DocumentLoadError, load_directory, load_docx
@@ -12,6 +14,18 @@ def make_docx(path: Path) -> None:
     document.add_paragraph("  使用   类型注解。  ")
     document.add_paragraph("")
     document.save(path)
+
+
+def corrupt_document_xml(path: Path) -> None:
+    with ZipFile(path, "r") as archive:
+        files = {
+            name: archive.read(name)
+            for name in archive.namelist()
+        }
+    files["word/document.xml"] = b"<w:document"
+    with ZipFile(path, "w", compression=ZIP_DEFLATED) as archive:
+        for name, content in files.items():
+            archive.writestr(name, content)
 
 
 def test_load_docx_normalizes_text_and_keeps_positions(tmp_path: Path) -> None:
@@ -27,6 +41,19 @@ def test_load_docx_normalizes_text_and_keeps_positions(tmp_path: Path) -> None:
     assert [item.position for item in paragraphs] == [1, 2]
     assert paragraphs[0].is_heading is True
     assert paragraphs[0].source == "guide.docx"
+
+
+def test_load_docx_recognizes_localized_heading_style(tmp_path: Path) -> None:
+    path = tmp_path / "localized.docx"
+    document = Document()
+    style = document.styles.add_style("标题自定义", WD_STYLE_TYPE.PARAGRAPH)
+    paragraph = document.add_paragraph("中文标题")
+    paragraph.style = style
+    document.save(path)
+
+    paragraphs = load_docx(path)
+
+    assert paragraphs[0].is_heading is True
 
 
 def test_load_docx_rejects_empty_document(tmp_path: Path) -> None:
@@ -67,3 +94,18 @@ def test_load_directory_records_corrupt_file_and_keeps_valid_files(
     assert list(documents) == ["valid.docx"]
     assert "broken.docx" in errors
     assert "cannot read" in errors["broken.docx"]
+
+
+def test_load_directory_records_malformed_word_xml(
+    tmp_path: Path,
+) -> None:
+    make_docx(tmp_path / "valid.docx")
+    malformed_path = tmp_path / "malformed.docx"
+    make_docx(malformed_path)
+    corrupt_document_xml(malformed_path)
+
+    documents, errors = load_directory(tmp_path)
+
+    assert list(documents) == ["valid.docx"]
+    assert "malformed.docx" in errors
+    assert "cannot read" in errors["malformed.docx"]
