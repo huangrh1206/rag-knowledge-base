@@ -51,7 +51,7 @@ def test_long_text_is_split_with_exact_overlap() -> None:
     assert all(chunk.paragraph_end == 1 for chunk in chunks)
 
 
-def test_each_chunk_tracks_the_paragraphs_its_window_touches() -> None:
+def test_splitter_prefers_nearby_paragraph_boundaries() -> None:
     paragraphs = [
         Paragraph("AAAA", "guide.docx", 10),
         Paragraph("BBBB", "guide.docx", 20),
@@ -65,17 +65,17 @@ def test_each_chunk_tracks_the_paragraphs_its_window_touches() -> None:
     )
 
     assert [chunk.text for chunk in chunks] == [
-        "AAAA\nB",
-        "BBBB\nC",
-        "CCCC",
+        "AAAA",
+        "A\nBBBB",
+        "B\nCCCC",
     ]
     assert [
         (chunk.paragraph_start, chunk.paragraph_end)
         for chunk in chunks
     ] == [
+        (10, 10),
         (10, 20),
         (20, 30),
-        (30, 30),
     ]
 
 
@@ -136,3 +136,20 @@ def test_heading_is_kept_with_its_following_paragraph() -> None:
 
     assert not chunks[0].text.endswith("新章节")
     assert "新章节\n正文内容" in chunks[0].text
+
+
+def test_consecutive_headings_are_kept_with_the_first_body_paragraph() -> None:
+    paragraphs = [
+        Paragraph("H" * 12, "guide.docx", 1, is_heading=True),
+        Paragraph("子标题", "guide.docx", 2, is_heading=True),
+        Paragraph("正文", "guide.docx", 3),
+    ]
+
+    chunks = split_paragraphs(
+        paragraphs,
+        chunk_size=10,
+        overlap=2,
+    )
+
+    assert chunks[0].text.endswith("子标题\n正文")
+    assert chunks[0].paragraph_end == 3

@@ -47,18 +47,40 @@ def _choose_end(
         start: int,
         chunk_size: int,
 ) -> int:
-    end = min(start + chunk_size, len(text))
 
-    if end == len(text):
-        return end
+    proposed = min(
+        start + chunk_size,
+        len(text)
+    )
+
+    if proposed == len(text):
+        return proposed
+
+    newline = text.rfind(
+        "\n",
+        start + chunk_size // 2,
+        proposed + 1,
+    )
+
+    end = (
+        newline
+        if newline > start
+        else proposed
+    )
 
     for index, span in enumerate(spans):
         if span.start < end <= span.end:
-            if (
-                span.is_heading
-                and index + 1 < len(spans)
-            ):
-                return spans[index + 1].end
+            if span.is_heading:
+                content_index = index + 1
+
+                while (
+                    content_index < len(spans)
+                    and spans[content_index].is_heading
+                ):
+                    content_index += 1
+
+                if content_index < len(spans):
+                    return spans[content_index].end
             break
     return end
 
