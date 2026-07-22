@@ -1,7 +1,7 @@
 import pytest
 
 from src.models import Paragraph
-from src.text_splitter import split_paragraphs
+from src.text_splitter import _choose_end, _compose, split_paragraphs
 
 
 def test_short_paragraphs_become_one_chunk() -> None:
@@ -77,6 +77,25 @@ def test_splitter_prefers_nearby_paragraph_boundaries() -> None:
         (10, 20),
         (20, 30),
     ]
+
+
+def test_boundary_shortening_preserves_forward_progress() -> None:
+    paragraphs = [
+        Paragraph("AAAA", "guide.docx", 1),
+        Paragraph("BBBB", "guide.docx", 2),
+    ]
+    text, spans = _compose(paragraphs)
+
+    end = _choose_end(
+        text,
+        spans,
+        start=0,
+        chunk_size=6,
+        overlap=5,
+    )
+
+    assert end == 6
+    assert end - 5 > 0
 
 
 def test_separator_window_maps_to_the_following_paragraph() -> None:

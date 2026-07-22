@@ -46,6 +46,7 @@ def _choose_end(
         spans: list[_Span],
         start: int,
         chunk_size: int,
+        overlap: int,
 ) -> int:
 
     proposed = min(
@@ -56,15 +57,20 @@ def _choose_end(
     if proposed == len(text):
         return proposed
 
+    search_start = max(
+        start + chunk_size // 2,
+        start + overlap + 1
+    )
+
     newline = text.rfind(
         "\n",
-        start + chunk_size // 2,
+        search_start,
         proposed + 1,
     )
 
     end = (
         newline
-        if newline > start
+        if newline > start + overlap
         else proposed
     )
 
@@ -133,6 +139,7 @@ def split_paragraphs(
             spans,
             start,
             chunk_size,
+            overlap
         )
 
         paragraph_start, paragraph_end = _paragraph_range(
