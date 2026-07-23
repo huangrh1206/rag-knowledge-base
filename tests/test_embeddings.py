@@ -65,12 +65,16 @@ def make_authentication_error() -> AuthenticationError:
     ("keyword", "value"),
     [
         ("batch_size", 0),
+        ("batch_size", True),
+        ("batch_size", 1.5),
         ("max_attempts", 0),
+        ("max_attempts", True),
+        ("max_attempts", 1.5),
     ],
 )
-def test_embedding_client_rejects_nonpositive_limits(
+def test_embedding_client_rejects_invalid_limits(
     keyword: str,
-    value: int,
+    value: object,
 ) -> None:
     arguments = {
         "api": FakeEmbeddings(),

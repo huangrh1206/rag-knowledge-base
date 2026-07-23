@@ -21,11 +21,19 @@ class EmbeddingClient:
         max_attempts: int = 3,
         sleep: Callable[[float], None] = time.sleep,
     ) -> None:
-        if batch_size <= 0:
-            raise ValueError("batch_size must be positive")
+        if (
+            isinstance(batch_size, bool)
+            or not isinstance(batch_size, int)
+            or batch_size <= 0
+        ):
+            raise ValueError("batch_size must be a positive integer")
 
-        if max_attempts <= 0:
-            raise ValueError("max_attempts must be positive")
+        if (
+            isinstance(max_attempts, bool)
+            or not isinstance(max_attempts, int)
+            or max_attempts <= 0
+        ):
+            raise ValueError("max_attempts must be a positive integer")
 
         self._api = api
         self._model = model
