@@ -1,0 +1,101 @@
+from pathlib import Path
+
+import numpy as np
+import pytest
+
+from src.models import Chunk, Paragraph, SearchResult
+from src.rag_service import RAGService, build_index
+
+
+class FakeRetriever:
+    def search(self, question: str) -> list[SearchResult]:
+        chunk = Chunk(
+            "guide-0000",
+            "Use type annotations",
+            "guide.docx",
+            1,
+            2,
+        )
+        return [SearchResult(chunk, 0.9)]
+
+
+class FakeGenerator:
+    def generate(
+        self,
+        question: str,
+        results: list[SearchResult],
+    ) -> str:
+        return "Use type annotations [1]"
+
+
+class FakeEmbedder:
+    def embed_texts(self, texts: list[str]) -> np.ndarray:
+        return np.ones((len(texts), 2), dtype=np.float32)
+
+
+def test_service_returns_answer_citations_and_chunks() -> None:
+    service = RAGService(
+        FakeRetriever(),
+        FakeGenerator(),
+    )
+
+    answer = service.ask("How do I declare parameters?")
+
+    assert answer.answer == "Use type annotations [1]"
+    assert answer.citations[0].number == 1
+    assert answer.citations[0].source == "guide.docx"
+    assert answer.citations[0].paragraph_start == 1
+    assert answer.citations[0].paragraph_end == 2
+    assert answer.retrieved_chunks[0].score == 0.9
+
+
+def test_build_index_saves_all_chunks(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        "src.rag_service.load_directory",
+        lambda _: (
+            {
+                "guide.docx": [
+                    Paragraph("Document body", "guide.docx", 1)
+                ]
+            },
+            {},
+        ),
+    )
+
+    report = build_index(
+        document_dir=tmp_path / "docs",
+        index_dir=tmp_path / "index",
+        embedder=FakeEmbedder(),
+        chunk_size=700,
+        overlap=100,
+    )
+
+    assert report.document_count == 1
+    assert report.chunk_count == 1
+    assert report.errors == {}
+    assert (tmp_path / "index" / "chunks.json").exists()
+    assert (tmp_path / "index" / "embeddings.npy").exists()
+
+
+def test_build_index_rejects_documents_without_chunks(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        "src.rag_service.load_directory",
+        lambda _: ({}, {"broken.docx": "empty document"}),
+    )
+
+    with pytest.raises(ValueError, match="no readable document content"):
+        build_index(
+            document_dir=tmp_path / "docs",
+            index_dir=tmp_path / "index",
+            embedder=FakeEmbedder(),
+            chunk_size=700,
+            overlap=100,
+        )
+
+    assert not (tmp_path / "index").exists()
