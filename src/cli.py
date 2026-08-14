@@ -159,3 +159,7 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
+#  python -m src.cli index .\data
+#  python -m src.cli ask "你的问题"
+#  python -m src.cli chat

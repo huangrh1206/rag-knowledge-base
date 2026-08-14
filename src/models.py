@@ -16,6 +16,7 @@ class Chunk:
     paragraph_end: int
 
     def to_dict(self) -> dict[str, object]:
+        """递归转换为普通字典"""
         return asdict(self)
     
     @classmethod
