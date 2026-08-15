@@ -17,7 +17,7 @@ class EmbeddingClient:
         self,
         api: Any,
         model: str,
-        batch_size: int = 64,
+        batch_size: int = 20,
         max_attempts: int = 3,
         sleep: Callable[[float], None] = time.sleep,
     ) -> None:

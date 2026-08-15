@@ -7,3 +7,4 @@ __pycache__/
 .codex-pytest-tmp/
 *.pyc
 storage/
+documents/

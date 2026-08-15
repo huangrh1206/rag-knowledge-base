@@ -16,6 +16,7 @@ def test_settings_uses_documented_model_defaults(
 
     assert settings.chat_model == "gpt-4.1-mini"
     assert settings.embedding_model == "text-embedding-3-small"
+    assert settings.embedding_batch_size == 20
 
 
 def test_settings_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -23,6 +24,7 @@ def test_settings_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("RAG_CHAT_MODEL", "chat-model")
     monkeypatch.setenv("RAG_EMBEDDING_MODEL", "embedding-model")
     monkeypatch.setenv("RAG_TOP_K", "3")
+    monkeypatch.setenv("RAG_EMBEDDING_BATCH_SIZE", "12")
 
     settings = Settings.from_env()
 
@@ -30,6 +32,7 @@ def test_settings_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
     assert settings.chat_model == "chat-model"
     assert settings.embedding_model == "embedding-model"
     assert settings.top_k == 3
+    assert settings.embedding_batch_size == 12
     assert settings.index_dir == Path("storage/index")
 
 

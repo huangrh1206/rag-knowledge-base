@@ -10,6 +10,7 @@ class Settings:
     base_url:str | None
     chat_model:str
     embedding_model:str
+    embedding_batch_size: int = 20
     chunk_size:int = 700
     chunk_overlap: int = 100
     top_k:int = 5
@@ -35,6 +36,9 @@ class Settings:
                 "RAG_EMBEDDING_MODEL", 
                 "text-embedding-3-small"
             ),
+            embedding_batch_size=int(
+                os.getenv("RAG_EMBEDDING_BATCH_SIZE", 20)
+            ),
             chunk_size=int(os.getenv("RAG_CHUNK_SIZE", 700)),
             chunk_overlap=int(os.getenv("RAG_CHUNK_OVERLAP", 100)),
             top_k=int(os.getenv("RAG_TOP_K", 5)),
@@ -44,6 +48,9 @@ class Settings:
 
         if settings.chunk_size <= 0:
             raise ValueError("chunk size must be positive.")
+
+        if settings.embedding_batch_size <= 0:
+            raise ValueError("embedding batch size must be positive.")
         
         if not 0 <= settings.chunk_overlap < settings.chunk_size:
             raise ValueError("overlap must be non-negative and less than chunk size.")

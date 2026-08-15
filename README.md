@@ -15,6 +15,13 @@ Copy-Item .env.example .env
 
 Edit `.env` with an OpenAI-compatible API key. Put Word documents in `data/`:
 
+For Alibaba Cloud `text-embedding-v3`, keep the embedding batch limit at or
+below 20:
+
+```env
+RAG_EMBEDDING_BATCH_SIZE=20
+```
+
 ```powershell
 python -m src.cli index .\data
 python -m src.cli ask "How does the document define request parameters?"

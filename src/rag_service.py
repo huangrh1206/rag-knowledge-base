@@ -10,7 +10,8 @@ from src.text_splitter import split_paragraphs
 from src.vector_store import VectorStore
 
 
-class BatchEmbedder(Protocol):
+class BatchEmbedder(Protocol):# EmbeddingClient
+    # src\embeddings.py
     def embed_texts(
         self,
         texts: list[str],
