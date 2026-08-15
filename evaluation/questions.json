@@ -1,0 +1,17 @@
+[
+  {
+    "question": "How does the document define request parameters?",
+    "category": "answerable",
+    "expected_source": null
+  },
+  {
+    "question": "What database does the document recommend?",
+    "category": "ambiguous",
+    "expected_source": null
+  },
+  {
+    "question": "What is tomorrow's weather in Shanghai?",
+    "category": "unanswerable",
+    "expected_source": null
+  }
+]
