@@ -8,3 +8,4 @@ __pycache__/
 *.pyc
 storage/
 documents/
+pytest-user-temp/
