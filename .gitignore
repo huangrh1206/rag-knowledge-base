@@ -11,3 +11,4 @@ documents/
 pytest-user-temp/
 docs/
 .pytest-local-*/
+*.egg-info/
