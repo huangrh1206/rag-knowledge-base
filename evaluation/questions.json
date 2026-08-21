@@ -1,17 +1,142 @@
 [
   {
-    "question": "How does the document define request parameters?",
+    "id": "q001",
+    "question": "OpenClaw 如何创建定时任务？",
     "category": "answerable",
-    "expected_source": null
+    "expected_sources": [
+      "openclaw创建定时任务.docx"
+    ],
+    "expected_keywords": [
+      "定时任务"
+    ]
   },
   {
-    "question": "What database does the document recommend?",
+    "id": "q002",
+    "question": "OpenClaw 如何接入企业微信？",
+    "category": "answerable",
+    "expected_sources": [
+      "openclaw接入企微.docx"
+    ],
+    "expected_keywords": [
+      "企业微信"
+    ]
+  },
+  {
+    "id": "q003",
+    "question": "OpenClaw 如何添加 Skills？",
+    "category": "answerable",
+    "expected_sources": [
+      "openclaw添加skills.docx"
+    ],
+    "expected_keywords": [
+      "skills"
+    ]
+  },
+  {
+    "id": "q004",
+    "question": "OpenClaw 如何通过 MCP 调用浏览器？",
+    "category": "answerable",
+    "expected_sources": [
+      "openclaw通过mcp调用浏览器.docx"
+    ],
+    "expected_keywords": [
+      "MCP",
+      "浏览器"
+    ]
+  },
+  {
+    "id": "q005",
+    "question": "Claude Code 源码如何部署？",
+    "category": "answerable",
+    "expected_sources": [
+      "Claude Code源码部署.docx"
+    ],
+    "expected_keywords": [
+      "源码",
+      "部署"
+    ]
+  },
+  {
+    "id": "q006",
+    "question": "如何远程连接 Ubuntu 桌面？",
+    "category": "answerable",
+    "expected_sources": [
+      "远程连接 Linux (Ubuntu) 桌面教程.docx"
+    ],
+    "expected_keywords": [
+      "Ubuntu",
+      "远程连接"
+    ]
+  },
+  {
+    "id": "q007",
+    "question": "OpenClaw 的配置教程包含哪些主要内容？",
+    "category": "answerable",
+    "expected_sources": [
+      "Openclaw配置教程.docx"
+    ],
+    "expected_keywords": [
+      "配置"
+    ]
+  },
+  {
+    "id": "q008",
+    "question": "Claude 如何接入 wecom-cli？",
+    "category": "answerable",
+    "expected_sources": [
+      "claude接入wecom-cli.docx"
+    ],
+    "expected_keywords": [
+      "wecom-cli"
+    ]
+  },
+  {
+    "id": "q009",
+    "question": "文档中推荐使用哪一种数据库？",
     "category": "ambiguous",
-    "expected_source": null
+    "expected_sources": [],
+    "expected_keywords": []
   },
   {
-    "question": "What is tomorrow's weather in Shanghai?",
+    "id": "q010",
+    "question": "OpenClaw 和 Claude Code 哪个更适合生产环境？",
+    "category": "ambiguous",
+    "expected_sources": [],
+    "expected_keywords": []
+  },
+  {
+    "id": "q011",
+    "question": "这些文档中有没有介绍 Windows 部署？",
+    "category": "ambiguous",
+    "expected_sources": [],
+    "expected_keywords": []
+  },
+  {
+    "id": "q012",
+    "question": "明天上海的天气怎么样？",
     "category": "unanswerable",
-    "expected_source": null
+    "expected_sources": [],
+    "expected_keywords": []
+  },
+  {
+    "id": "q013",
+    "question": "这套知识库中有没有介绍股票价格？",
+    "category": "unanswerable",
+    "expected_sources": [],
+    "expected_keywords": []
+  },
+  {
+    "id": "q014",
+    "question": "OpenClaw 作者的私人电话号码是多少？",
+    "category": "unanswerable",
+    "expected_sources": [],
+    "expected_keywords": []
+  },
+  {
+    "id": "q015",
+    "question": "文档中没有提到的产品价格是多少？",
+    "category": "unanswerable",
+    "expected_sources": [],
+    "expected_keywords": []
   }
 ]
