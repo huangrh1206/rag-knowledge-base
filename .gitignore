@@ -10,3 +10,4 @@ storage/
 documents/
 pytest-user-temp/
 docs/
+.pytest-local-*/
