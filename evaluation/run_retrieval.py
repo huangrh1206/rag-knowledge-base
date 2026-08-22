@@ -56,14 +56,34 @@ def run_evaluation(
 
         retrieved_sources[case_id] = sources
 
+        top_score = results[0].score if results else 0.0
+        second_score = results[1].score if len(results) > 1 else 0.0
+
+        refused = False
+        refusal_reason = None
+
         if case["category"] == "unanswerable":
-            refusal_predictions[case_id] = not results
+            refused = (
+                top_score < 0.60
+                or top_score - second_score < 0.05
+            )
+            if top_score < 0.60:
+                refusal_reason = "top_score_below_threshold"
+            elif top_score - second_score < 0.05:
+                refusal_reason = "score_margin_too_small"
+            else:
+                refusal_reason = "evidence_looks_sufficient"
+            refusal_predictions[case_id] = refused
 
         details.append(
             {
                 "id": case_id,
                 "category": case["category"],
                 "retrieved_sources": sources,
+                "top_score": round(top_score, 4),
+                "second_score": round(second_score, 4),
+                "refused": refused,
+                "refusal_reason": refusal_reason,
                 "scores": [
                     round(result.score, 4)
                     for result in results
