@@ -12,3 +12,4 @@ pytest-user-temp/
 docs/
 .pytest-local-*/
 *.egg-info/
+evaluation/baseline-report.json
