@@ -14,7 +14,7 @@ from src.vector_store import VectorStore
 from src.agent import KnowledgeAgent
 from src.generator import AnswerGenerator
 from src.rag_service import RAGService, build_index
-
+from src.evidence_policy import EvidencePolicy
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
@@ -129,6 +129,10 @@ def main() -> int:
             service = RAGService(
                 retriever=retriever,
                 generator=generator,
+                evidence_policy=EvidencePolicy(
+                    minimum_score=settings.evidence_minimum_score,
+                    minimum_results=settings.evidence_minimum_results,
+                ),
             )
 
             print_answer(service.ask(args.question))

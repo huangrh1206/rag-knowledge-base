@@ -8,6 +8,7 @@ from src.config import Settings
 from src.embeddings import EmbeddingClient
 from src.retriever import Retriever
 from src.vector_store import VectorStore
+from src.evidence_policy import EvidencePolicy
 
 from evaluation.metrics import evaluate_retrieval
 
@@ -40,6 +41,7 @@ def build_retriever(settings: Settings) -> Retriever:
 def run_evaluation(
     questions: list[dict[str, object]],
     retriever: Retriever,
+    evidence_policy: EvidencePolicy,
 ) -> dict[str, object]:
     retrieved_sources: dict[str, list[str]] = {}
     refusal_predictions: dict[str, bool] = {}
@@ -63,16 +65,9 @@ def run_evaluation(
         refusal_reason = None
 
         if case["category"] == "unanswerable":
-            refused = (
-                top_score < 0.60
-                or top_score - second_score < 0.05
-            )
-            if top_score < 0.60:
-                refusal_reason = "top_score_below_threshold"
-            elif top_score - second_score < 0.05:
-                refusal_reason = "score_margin_too_small"
-            else:
-                refusal_reason = "evidence_looks_sufficient"
+            decision = evidence_policy.evaluate(results)
+            refused = not decision.allowed
+            refusal_reason = decision.reason
             refusal_predictions[case_id] = refused
 
         details.append(
@@ -115,9 +110,14 @@ def main() -> int:
     settings = Settings.from_env()
     questions = load_questions(args.questions)
     retriever = build_retriever(settings)
+    evidence_policy = EvidencePolicy(
+        minimum_score=settings.evidence_minimum_score,
+        minimum_results=settings.evidence_minimum_results,
+    )
     report = run_evaluation(
         questions=questions,
         retriever=retriever,
+        evidence_policy = evidence_policy,
     )
     print(
         json.dumps(
