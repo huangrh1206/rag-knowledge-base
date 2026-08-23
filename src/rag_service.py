@@ -8,7 +8,8 @@ from src.document_loader import load_directory
 from src.models import Answer, Citation, SearchResult
 from src.text_splitter import split_paragraphs
 from src.vector_store import VectorStore
-
+from src.evidence_policy import EvidencePolicy
+from src.generator import INSUFFICIENT_EVIDENCE
 
 class BatchEmbedder(Protocol):# EmbeddingClient
     # src\embeddings.py
@@ -48,13 +49,26 @@ class RAGService:
         self,
         retriever: ResultRetriever,
         generator: ResultGenerator,
+        evidence_policy: EvidencePolicy | None = None,
     ) -> None:
         self._retriever = retriever
         self._generator = generator
+        self._evidence_policy = evidence_policy or EvidencePolicy(
+            minimum_score=0.30,
+            minimum_results=1,
+        )
 
     def ask(self, question: str) -> Answer:
         results = self._retriever.search(question)
+        decision = self._evidence_policy.evaluate(results)
 
+        if not decision.allowed:
+            return Answer(
+                answer=INSUFFICIENT_EVIDENCE,
+                citations=(),
+                retrieved_chunks=tuple(results),
+            )
+        
         text = self._generator.generate(
             question,
             results,

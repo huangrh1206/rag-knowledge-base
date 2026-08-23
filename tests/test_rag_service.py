@@ -5,7 +5,8 @@ import pytest
 
 from src.models import Chunk, Paragraph, SearchResult
 from src.rag_service import RAGService, build_index
-
+from src.evidence_policy import EvidencePolicy
+from src.generator import INSUFFICIENT_EVIDENCE
 
 class FakeRetriever:
     def search(self, question: str) -> list[SearchResult]:
@@ -99,3 +100,37 @@ def test_build_index_rejects_documents_without_chunks(
         )
 
     assert not (tmp_path / "index").exists()
+
+class EmptyRetriever:
+    def search(self, question: str) -> list[SearchResult]:
+        return []
+
+class RecordingGenerator:
+    def __init__(self) -> None:
+        self.calls = 0
+
+    def generate(
+        self,
+        question: str,
+        results: list[SearchResult],
+    ) -> str:
+        self.calls += 1
+        return "should not be called"
+
+def test_service_refuses_without_sufficient_evidence() -> None:
+    generator = RecordingGenerator()
+    service = RAGService(
+        retriever=EmptyRetriever(),
+        generator=generator,
+        evidence_policy=EvidencePolicy(
+            minimum_score=0.60,
+            minimum_results=1,
+        ),
+    )
+
+    answer = service.ask("What is the private phone number?")
+
+    assert answer.answer == INSUFFICIENT_EVIDENCE
+    assert answer.citations == ()
+    assert answer.retrieved_chunks == ()
+    assert generator.calls == 0

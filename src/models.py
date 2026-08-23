@@ -46,3 +46,9 @@ class Answer:
     answer: str
     citations: tuple[Citation, ...]
     retrieved_chunks: tuple[SearchResult, ...]
+
+@dataclass(frozen=True)
+class EvidenceDecision:
+    allowed: bool
+    reason: str
+    
