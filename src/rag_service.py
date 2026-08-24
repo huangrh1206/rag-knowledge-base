@@ -5,7 +5,7 @@ from typing import Protocol
 import numpy as np
 
 from src.document_loader import load_directory
-from src.models import Answer, Citation, SearchResult
+from src.models import Answer, Citation, SearchResult, Chunk
 from src.text_splitter import split_paragraphs
 from src.vector_store import VectorStore
 from src.evidence_policy import EvidencePolicy
@@ -90,6 +90,13 @@ class RAGService:
             retrieved_chunks=tuple(results),
         )
 
+def format_chunk_for_embedding(chunk: Chunk) -> str:
+    document_title = Path(chunk.source).stem
+
+    return (
+        f"文档标题：{document_title}\n"
+        f"正文：{chunk.text}"
+    )
 
 def build_index(
     document_dir: Path,
@@ -114,7 +121,10 @@ def build_index(
         raise ValueError("no readable document content found")
 
     embeddings = embedder.embed_texts(
-        [chunk.text for chunk in chunks]
+        [
+            format_chunk_for_embedding(chunk)
+            for chunk in chunks
+        ]
     )
 
     VectorStore(

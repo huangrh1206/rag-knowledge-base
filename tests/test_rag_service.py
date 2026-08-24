@@ -134,3 +134,44 @@ def test_service_refuses_without_sufficient_evidence() -> None:
     assert answer.citations == ()
     assert answer.retrieved_chunks == ()
     assert generator.calls == 0
+
+class RecordingEmbedder:
+    def __init__(self) -> None:
+        self.texts: list[str] = []
+
+    def embed_texts(self, texts: list[str]) -> np.ndarray:
+        self.texts = texts
+        return np.ones((len(texts), 2), dtype=np.float32)
+
+def test_build_index_enriches_embedding_text_with_document_title(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        "src.rag_service.load_directory",
+        lambda _: (
+            {
+                "openclaw通过mcp调用浏览器.docx": [
+                    Paragraph(
+                        text="安装 Playwright 并配置服务",
+                        source="openclaw通过mcp调用浏览器.docx",
+                        position=1,
+                    )
+                ]
+            },
+            {},
+        ),
+    )
+    embedder = RecordingEmbedder()
+
+    build_index(
+        document_dir=tmp_path / "documents",
+        index_dir=tmp_path / "index",
+        embedder=embedder,
+        chunk_size=700,
+        overlap=100,
+    )
+
+    assert len(embedder.texts) == 1
+    assert "文档标题：openclaw通过mcp调用浏览器" in embedder.texts[0]
+    assert "正文：安装 Playwright 并配置服务" in embedder.texts[0]
