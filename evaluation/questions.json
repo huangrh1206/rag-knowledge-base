@@ -1,93 +1,99 @@
 [
   {
     "id": "q001",
-    "question": "OpenClaw 如何创建定时任务？",
+    "question": "如何设置一个可以周期性自动执行的任务？",
     "category": "answerable",
     "expected_sources": [
       "openclaw创建定时任务.docx"
     ],
     "expected_keywords": [
-      "定时任务"
+      "定时",
+      "周期"
     ]
   },
   {
     "id": "q002",
-    "question": "OpenClaw 如何接入企业微信？",
+    "question": "如何把这个智能助手接入企业微信，让用户可以在聊天窗口中使用它？",
     "category": "answerable",
     "expected_sources": [
       "openclaw接入企微.docx"
     ],
     "expected_keywords": [
-      "企业微信"
+      "企业微信",
+      "机器人"
     ]
   },
   {
     "id": "q003",
-    "question": "OpenClaw 如何添加 Skills？",
+    "question": "如果需要给系统增加新的专业能力，应该怎样安装和配置扩展组件？",
     "category": "answerable",
     "expected_sources": [
       "openclaw添加skills.docx"
     ],
     "expected_keywords": [
-      "skills"
+      "扩展",
+      "安装"
     ]
   },
   {
     "id": "q004",
-    "question": "OpenClaw 如何通过 MCP 调用浏览器？",
+    "question": "如何在 Linux 环境中启动浏览器，并让自动化程序控制网页操作？",
     "category": "answerable",
     "expected_sources": [
       "openclaw通过mcp调用浏览器.docx"
     ],
     "expected_keywords": [
-      "MCP",
-      "浏览器"
+      "浏览器",
+      "自动化"
     ]
   },
   {
     "id": "q005",
-    "question": "Claude Code 源码如何部署？",
+    "question": "从源代码部署 Claude Code 之前，需要准备哪些环境并执行哪些步骤？",
     "category": "answerable",
     "expected_sources": [
       "Claude Code源码部署.docx"
     ],
     "expected_keywords": [
-      "源码",
+      "环境",
       "部署"
     ]
   },
   {
     "id": "q006",
-    "question": "如何远程连接 Ubuntu 桌面？",
+    "question": "如何从 Windows 电脑远程进入一台 Ubuntu 机器的图形桌面？",
     "category": "answerable",
     "expected_sources": [
       "远程连接 Linux (Ubuntu) 桌面教程.docx"
     ],
     "expected_keywords": [
+      "Windows",
       "Ubuntu",
-      "远程连接"
+      "图形桌面"
     ]
   },
   {
     "id": "q007",
-    "question": "OpenClaw 的配置教程包含哪些主要内容？",
+    "question": "完成基础安装后，还需要配置哪些内容才能让多个智能体正常工作？",
     "category": "answerable",
     "expected_sources": [
       "Openclaw配置教程.docx"
     ],
     "expected_keywords": [
+      "安装",
       "配置"
     ]
   },
   {
     "id": "q008",
-    "question": "Claude 如何接入 wecom-cli？",
+    "question": "怎样通过企业协作工具把 Claude 的能力接入聊天流程？",
     "category": "answerable",
     "expected_sources": [
       "claude接入wecom-cli.docx"
     ],
     "expected_keywords": [
-      "wecom-cli"
+      "Claude",
+      "聊天"
     ]
   },
   {

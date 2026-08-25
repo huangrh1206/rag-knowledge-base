@@ -7,6 +7,7 @@ class EvaluationSummary:
     recall_at_1: float
     recall_at_5: float
     mrr: float
+    answerable_acceptance: float
     unanswerable_count: int
     refusal_accuracy: float
 
@@ -32,12 +33,22 @@ def evaluate_retrieval(
     cases: Iterable[dict[str, object]],
     retrieved_sources: dict[str, list[str]],
     refusal_predictions: dict[str, bool],
+    evidence_predictions: dict[str, bool],
 ) -> EvaluationSummary:
     answerable = [
         case
         for case in cases
         if case["category"] == "answerable"
     ]
+
+    accepted_answerable = 0
+
+    for case in answerable:
+        case_id = str(case["id"])
+
+        accepted_answerable += int(
+            evidence_predictions.get(case_id, False)
+        )
 
     unanswerable = [
         case
@@ -86,6 +97,7 @@ def evaluate_retrieval(
         recall_at_1=recall_1_hits / len(answerable),
         recall_at_5=recall_5_hits / len(answerable),
         mrr=sum(reciprocal_ranks) / len(answerable),
+        answerable_acceptance=accepted_answerable / len(answerable),
         unanswerable_count=len(unanswerable),
         refusal_accuracy=corrent_refusals / len(unanswerable),
     )

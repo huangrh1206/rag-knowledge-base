@@ -45,6 +45,7 @@ def run_evaluation(
 ) -> dict[str, object]:
     retrieved_sources: dict[str, list[str]] = {}
     refusal_predictions: dict[str, bool] = {}
+    evidence_predictions: dict[str, bool] = {}
     details: list[dict[str, object]] = []
 
     for case in questions:
@@ -62,12 +63,14 @@ def run_evaluation(
         second_score = results[1].score if len(results) > 1 else 0.0
 
         refused = False
-        refusal_reason = None
+        decision = evidence_policy.evaluate(results)
+        accepted = decision.allowed
+        refused = not accepted
+
+        if case["category"] == "answerable":
+            evidence_predictions[case_id] = accepted
 
         if case["category"] == "unanswerable":
-            decision = evidence_policy.evaluate(results)
-            refused = not decision.allowed
-            refusal_reason = decision.reason
             refusal_predictions[case_id] = refused
 
         details.append(
@@ -77,8 +80,9 @@ def run_evaluation(
                 "retrieved_sources": sources,
                 "top_score": round(top_score, 4),
                 "second_score": round(second_score, 4),
+                "evidence_allowed": accepted,
                 "refused": refused,
-                "refusal_reason": refusal_reason,
+                "refusal_reason": decision.reason,
                 "scores": [
                     round(result.score, 4)
                     for result in results
@@ -90,6 +94,7 @@ def run_evaluation(
         cases=questions,
         retrieved_sources=retrieved_sources,
         refusal_predictions=refusal_predictions,
+        evidence_predictions=evidence_predictions,
     )
 
     return {

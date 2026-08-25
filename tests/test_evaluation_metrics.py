@@ -21,6 +21,7 @@ def  test_evaluation_calculates_recall_and_mrr() -> None:
         },
     ]
 
+
     summary = evaluate_retrieval(
         cases=cases,
         retrieved_sources={
@@ -30,6 +31,10 @@ def  test_evaluation_calculates_recall_and_mrr() -> None:
         refusal_predictions={
             "q003": True,
         },
+        evidence_predictions={
+            "q001": True,
+            "q002": True,
+        },
     )
 
     assert summary.answerable_count == 2
@@ -38,6 +43,7 @@ def  test_evaluation_calculates_recall_and_mrr() -> None:
     assert summary.mrr == pytest.approx(0.75)
     assert summary.unanswerable_count == 1
     assert summary.refusal_accuracy == pytest.approx(1.0)
+    assert summary.answerable_acceptance == pytest.approx(1.0)
 
 def test_missing_refusal_prediction_counts_as_incorrect() -> None:
     cases = [
@@ -57,9 +63,13 @@ def test_missing_refusal_prediction_counts_as_incorrect() -> None:
         cases=cases,
         retrieved_sources={"q001": ["guide.docx"]},
         refusal_predictions={},
+        evidence_predictions={
+            "q001": True,
+        },
     )
 
     assert summary.refusal_accuracy == 0.0
+    assert summary.answerable_acceptance == pytest.approx(1.0)
 
 def test_evaluation_requires_both_case_types() -> None:
     with pytest.raises(ValueError, match="answerable"):
@@ -73,6 +83,7 @@ def test_evaluation_requires_both_case_types() -> None:
             ],
             retrieved_sources={},
             refusal_predictions={},
+            evidence_predictions={},
         )
 
     with pytest.raises(ValueError, match="unanswerable"):
@@ -86,5 +97,6 @@ def test_evaluation_requires_both_case_types() -> None:
             ],
             retrieved_sources={},
             refusal_predictions={},
+            evidence_predictions={},
         )
 
