@@ -43,6 +43,7 @@ def test_service_returns_answer_citations_and_chunks() -> None:
     answer = service.ask("How do I declare parameters?")
 
     assert answer.answer == "Use type annotations [1]"
+    assert len(answer.citations) == 1
     assert answer.citations[0].number == 1
     assert answer.citations[0].source == "guide.docx"
     assert answer.citations[0].paragraph_start == 1
@@ -175,3 +176,44 @@ def test_build_index_enriches_embedding_text_with_document_title(
     assert len(embedder.texts) == 1
     assert "文档标题：openclaw通过mcp调用浏览器" in embedder.texts[0]
     assert "正文：安装 Playwright 并配置服务" in embedder.texts[0]
+
+class InvalidCitationGenerator:
+    def generate(
+        self,
+        question: str,
+        results: list[SearchResult],
+    ) -> str:
+        return "答案引用了不存在的资料 [99]"
+
+
+class NoCitationGenerator:
+    def generate(
+        self,
+        question: str,
+        results: list[SearchResult],
+    ) -> str:
+        return "这是一个没有引用的答案"
+
+def test_service_rejects_invalid_citation_number() -> None:
+    service = RAGService(
+        retriever=FakeRetriever(),
+        generator=InvalidCitationGenerator(),
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="invalid citation numbers",
+    ):
+        service.ask("How do I declare parameters?")
+
+def test_service_rejects_answer_without_citation() -> None:
+    service = RAGService(
+        retriever=FakeRetriever(),
+        generator=NoCitationGenerator(),
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="at least one valid citation",
+    ):
+        service.ask("How do I declare parameters?")

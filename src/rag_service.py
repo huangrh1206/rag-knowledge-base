@@ -5,11 +5,12 @@ from typing import Protocol
 import numpy as np
 
 from src.document_loader import load_directory
-from src.models import Answer, Citation, SearchResult, Chunk
+from src.models import Answer, SearchResult, Chunk
 from src.text_splitter import split_paragraphs
 from src.vector_store import VectorStore
 from src.evidence_policy import EvidencePolicy
 from src.generator import INSUFFICIENT_EVIDENCE
+from src.citation_validator import validate_citations, citations_for_numbers
 
 class BatchEmbedder(Protocol):# EmbeddingClient
     # src\embeddings.py
@@ -74,14 +75,29 @@ class RAGService:
             results,
         )
 
-        citations = tuple(
-            Citation(
-                number=number,
-                source=result.chunk.source,
-                paragraph_start=result.chunk.paragraph_start,
-                paragraph_end=result.chunk.paragraph_end,
+        validation = validate_citations(
+            answer=text,
+            evidence_count=len(results),
+        )
+
+        if not validation.valid:
+            invalid_numbers = ", ".join(
+                str(number)
+                for number in validation.invalid_numbers
             )
-            for number, result in enumerate(results, start=1)
+
+            if invalid_numbers:
+                raise ValueError(
+                    f"model returned invalid citation numbers: {invalid_numbers}"
+                )
+
+            raise ValueError(
+                "model answer must contain at least one valid citation"
+            )
+
+        citations = citations_for_numbers(
+            results=results,
+            numbers=validation.referenced_numbers,
         )
 
         return Answer(

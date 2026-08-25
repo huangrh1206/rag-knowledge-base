@@ -1,6 +1,8 @@
 import re
 from dataclasses import dataclass
 
+from src.models import Citation, SearchResult
+
 _CITATION_PATTERN = re.compile(r"\[(\d+)\]")
 
 @dataclass(frozen=True)
@@ -37,4 +39,17 @@ def validate_citations(
         invalid_numbers=invalid_numbers,
         has_citation=bool(numbers),
     )
-    
+
+def citations_for_numbers(
+    results: list[SearchResult],
+    numbers:tuple[int, ...],
+) -> tuple[Citation, ...]:
+    return tuple(
+        Citation(
+            number=number,
+            source=results[number - 1].chunk.source,
+            paragraph_start=results[number - 1].chunk.paragraph_start,
+            paragraph_end=results[number - 1].chunk.paragraph_end,
+        )
+        for number in numbers
+    )
