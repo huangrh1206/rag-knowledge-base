@@ -1,0 +1,25 @@
+from typing import Protocol
+
+import numpy as np
+
+from src.models import SearchResult
+
+class SearchStore(Protocol):
+    # src\vector_store.py
+    def search(
+        self,
+        query: np.ndarray,
+        top_k: int,
+    ) -> list[SearchResult]:
+        """Return the highest-scoring results for one query."""
+        ...
+
+    
+
+
+
+
+
+
+
+
