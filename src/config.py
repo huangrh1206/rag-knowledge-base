@@ -15,7 +15,7 @@ class Settings:
     chunk_overlap: int = 100
     top_k:int = 5
     similarity_threshold:float = 0.30
-    evidence_minimum_score: float = 0.60
+    evidence_minimum_score: float = 0.50
     evidence_minimum_results: int = 1
     index_dir:Path = Path("storage/index")
 
@@ -45,7 +45,7 @@ class Settings:
             chunk_overlap=int(os.getenv("RAG_CHUNK_OVERLAP", 100)),
             top_k=int(os.getenv("RAG_TOP_K", 5)),
             similarity_threshold=float(os.getenv("RAG_SIMILARITY_THRESHOLD", 0.30)),
-            evidence_minimum_score=float(os.getenv("RAG_EVIDENCE_MIN_SCORE", 0.60)),
+            evidence_minimum_score=float(os.getenv("RAG_EVIDENCE_MIN_SCORE", 0.50)),
             evidence_minimum_results=int(os.getenv("RAG_EVIDENCE_MIN_RESULTS", 1)),
             index_dir=Path(os.getenv("RAG_INDEX_DIR", "storage/index")),
         )

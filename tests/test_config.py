@@ -17,7 +17,7 @@ def test_settings_uses_documented_model_defaults(
     assert settings.chat_model == "gpt-4.1-mini"
     assert settings.embedding_model == "text-embedding-3-small"
     assert settings.embedding_batch_size == 20
-    assert settings.evidence_minimum_score == 0.60
+    assert settings.evidence_minimum_score == 0.50
     assert settings.evidence_minimum_results == 1
 
 def test_settings_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
