@@ -49,8 +49,8 @@ def run_evaluation(
     details: list[dict[str, object]] = []
 
     for case in questions:
-        case_id = case["id"]
-        question = case["question"]
+        case_id = str(case["id"])
+        question = str(case["question"])
         results = retriever.search(question)
         sources = [
             result.chunk.source
@@ -135,3 +135,5 @@ def main() -> int:
 
 if __name__ == '__main__':
     raise SystemExit(main())
+
+#python -m evaluation.run_retrieval > evaluation\paraphrase-report-v2.json
