@@ -136,7 +136,9 @@
     "question": "OpenClaw 作者的私人电话号码是多少？",
     "category": "unanswerable",
     "expected_sources": [],
-    "expected_keywords": []
+    "expected_keywords": [
+      "电话号码"
+    ]
   },
   {
     "id": "q015",

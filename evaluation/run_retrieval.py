@@ -38,6 +38,26 @@ def build_retriever(settings: Settings) -> Retriever:
         threshold=settings.similarity_threshold,
     )
 
+def calculate_keyword_coverage(
+    keywords: object,
+    results: list,
+) -> float:
+    if not isinstance(keywords, list) or not keywords:
+        return 1.0
+
+    evidence_text = "\n".join(
+        result.chunk.text.lower()
+        for result in results
+    )
+
+    matched = sum(
+        1
+        for keyword in keywords
+        if str(keyword).lower() in evidence_text
+    )
+
+    return matched / len(keywords)
+
 def run_evaluation(
     questions: list[dict[str, object]],
     retriever: Retriever,
@@ -52,6 +72,11 @@ def run_evaluation(
         case_id = str(case["id"])
         question = str(case["question"])
         results = retriever.search(question)
+        keywords_coverage = calculate_keyword_coverage(
+            keywords=case.get("expected_keywords", []),
+            results=results,
+        )
+        
         sources = [
             result.chunk.source
             for result in results
@@ -81,6 +106,7 @@ def run_evaluation(
                 "top_score": round(top_score, 4),
                 "second_score": round(second_score, 4),
                 "evidence_allowed": accepted,
+                "keyword_coverage": round(keywords_coverage, 4),
                 "refused": refused,
                 "refusal_reason": decision.reason,
                 "scores": [
