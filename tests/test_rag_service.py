@@ -7,6 +7,8 @@ from src.models import Chunk, Paragraph, SearchResult
 from src.rag_service import RAGService, build_index
 from src.evidence_policy import EvidencePolicy
 from src.generator import INSUFFICIENT_EVIDENCE
+from src.rag_service import RAGService, build_index, build_qdrant_index
+from src.qdrant_vector_store import QdrantVectorStore
 
 class FakeRetriever:
     def search(self, question: str) -> list[SearchResult]:
@@ -217,3 +219,59 @@ def test_service_rejects_answer_without_citation() -> None:
         match="at least one valid citation",
     ):
         service.ask("How do I declare parameters?")
+
+def test_build_qdrant_index_writes_collection(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        "src.rag_service.load_directory",
+        lambda _: (
+            {
+                "guide.docx": [
+                    Paragraph(
+                        "Document body",
+                        "guide.docx",
+                        1,
+                    )
+                ]
+            },
+            {},
+        ),
+    )
+
+    qdrant_path = tmp_path / "qdrant"
+    embedder = FakeEmbedder()
+
+    report = build_qdrant_index(
+        document_dir=tmp_path / "documents",
+        qdrant_path=qdrant_path,
+        collection_name="rag_chunks",
+        embedder=embedder,
+        chunk_size=700,
+        overlap=100,
+    )
+
+    assert report.document_count == 1
+    assert report.chunk_count == 1
+    assert report.errors == {}
+
+    from qdrant_client import QdrantClient
+
+    client = QdrantClient(path=str(qdrant_path))
+
+    try:
+        store = QdrantVectorStore.load(
+            client=client,
+            collection_name="rag_chunks",
+        )
+
+        results = store.search(
+            np.array([1.0, 1.0], dtype=np.float32),
+            top_k=1,
+        )
+
+        assert len(results) == 1
+        assert results[0].chunk.source == "guide.docx"
+    finally:
+        client.close()

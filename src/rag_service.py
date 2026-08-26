@@ -2,6 +2,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
 
+from qdrant_client import QdrantClient
+
 import numpy as np
 
 from src.document_loader import load_directory
@@ -11,6 +13,7 @@ from src.vector_store import VectorStore
 from src.evidence_policy import EvidencePolicy
 from src.generator import INSUFFICIENT_EVIDENCE
 from src.citation_validator import validate_citations, citations_for_numbers
+from src.qdrant_vector_store import QdrantVectorStore
 
 class BatchEmbedder(Protocol):# EmbeddingClient
     # src\embeddings.py
@@ -114,13 +117,11 @@ def format_chunk_for_embedding(chunk: Chunk) -> str:
         f"正文：{chunk.text}"
     )
 
-def build_index(
+def load_chunks(
     document_dir: Path,
-    index_dir: Path,
-    embedder: BatchEmbedder,
     chunk_size: int,
     overlap: int,
-) -> IndexReport:
+) -> tuple[list[Chunk], dict[str, str], int]:
     documents, errors = load_directory(document_dir)
 
     chunks = [
@@ -132,6 +133,21 @@ def build_index(
             overlap,
         )
     ]
+
+    return chunks, errors, len(documents)
+
+def build_index(
+    document_dir: Path,
+    index_dir: Path,
+    embedder: BatchEmbedder,
+    chunk_size: int,
+    overlap: int,
+) -> IndexReport:
+    chunks, errors, documents_count = load_chunks(
+        document_dir=document_dir,
+        chunk_size=chunk_size,
+        overlap=overlap,
+    )
 
     if not chunks:
         raise ValueError("no readable document content found")
@@ -149,7 +165,53 @@ def build_index(
     ).save(index_dir)
 
     return IndexReport(
-        document_count=len(documents),
+        document_count=documents_count,
+        chunk_count=len(chunks),
+        errors=errors,
+    )
+
+
+def build_qdrant_index(
+    document_dir: Path,
+    qdrant_path: Path,
+    collection_name: str,
+    embedder: BatchEmbedder,
+    chunk_size: int,
+    overlap: int,
+) -> IndexReport:
+    chunks, errors, documents_count = load_chunks(
+        document_dir=document_dir,
+        chunk_size=chunk_size,
+        overlap=overlap,
+    )
+
+    if not chunks:
+        raise ValueError("no readable document content found")
+
+    embeddings = embedder.embed_texts(
+        [
+            format_chunk_for_embedding(chunk)
+            for chunk in chunks
+        ]
+    )
+
+    client = QdrantClient(
+        path = str(qdrant_path)
+    )
+
+    try:
+        QdrantVectorStore.create(
+            client=client,
+            collection_name=collection_name,
+            chunks=chunks,
+            embeddings=embeddings,
+        )
+    finally:
+        client.close()
+
+
+    return IndexReport(
+        document_count=documents_count,
         chunk_count=len(chunks),
         errors=errors,
     )
