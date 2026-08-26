@@ -123,3 +123,38 @@ def test_qdrant_store_load_rejects_missing_collection() -> None:
             client=client,
             collection_name="missing",
         )
+
+def test_qdrant_store_survives_client_restart(tmp_path) -> None:
+    storage_path = tmp_path / "qdrant"
+
+    first_client = QdrantClient(
+        path=str(storage_path),
+    )
+
+    QdrantVectorStore.create(
+        client=first_client,
+        collection_name="persistent_chunks",
+        chunks=chunks(),
+        embeddings=np.eye(2, dtype=np.float32),
+    )
+
+    first_client.close()
+
+    second_client = QdrantClient(
+        path=str(storage_path),
+    )
+
+    restored = QdrantVectorStore.load(
+        client=second_client,
+        collection_name="persistent_chunks",
+    )
+
+    results = restored.search(
+        np.array([0.0, 1.0], dtype=np.float32),
+        top_k=1,
+    )
+
+    assert results[0].chunk.id == "guide-0001"
+    assert results[0].chunk.text == "Docker"
+
+    second_client.close()
