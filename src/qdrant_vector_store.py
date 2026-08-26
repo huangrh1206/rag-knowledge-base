@@ -87,6 +87,34 @@ class QdrantVectorStore:
             vector_size=vector_size,
         )
 
+    @classmethod
+    def load(
+        cls,
+        client: QdrantClient,
+        collection_name: str,
+    ) -> "QdrantVectorStore":
+        if not collection_name.strip():
+            raise ValueError("collection_name cannot be empty")
+
+        if not client.collection_exists(collection_name):
+            raise ValueError(
+                f"Qdrant collection does not exist: {collection_name}"
+            )
+
+        collection = client.get_collection(collection_name)
+        vector_size = collection.config.params.vectors.size
+
+        if not isinstance(vector_size, int) or vector_size <= 0:
+            raise ValueError(
+                "Qdrant collection has invalid vector size"
+            )
+
+        return cls(
+            client=client,
+            collection_name=collection_name,
+            vector_size=vector_size,
+        )
+
     def search(
         self, 
         query: np.ndarray,

@@ -87,3 +87,39 @@ def test_qdrant_store_rejects_query_dimension_mismatch() -> None:
             np.array([1.0, 0.0, 0.0], dtype=np.float32),
             top_k=1,
         )
+
+def test_qdrant_store_loads_existing_collection() -> None:
+    client = QdrantClient(location=":memory:")
+
+    QdrantVectorStore.create(
+        client=client,
+        collection_name="test_chunks",
+        chunks=chunks(),
+        embeddings=np.eye(2, dtype=np.float32),
+    )
+
+    restored = QdrantVectorStore.load(
+        client=client,
+        collection_name="test_chunks",
+    )
+
+    results = restored.search(
+        np.array([1.0, 0.0], dtype=np.float32),
+        top_k=1,
+    )
+
+    assert results[0].chunk.id == "guide-0000"
+    assert results[0].score == pytest.approx(1.0)
+
+
+def test_qdrant_store_load_rejects_missing_collection() -> None:
+    client = QdrantClient(location=":memory:")
+
+    with pytest.raises(
+        ValueError,
+        match="collection does not exist",
+    ):
+        QdrantVectorStore.load(
+            client=client,
+            collection_name="missing",
+        )
