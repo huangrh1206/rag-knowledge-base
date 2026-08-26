@@ -10,11 +10,11 @@ from src.api_client import create_openai_client
 from src.config import Settings
 from src.embeddings import EmbeddingClient
 from src.retriever import Retriever
-from src.vector_store import VectorStore
 from src.agent import KnowledgeAgent
 from src.generator import AnswerGenerator
 from src.rag_service import RAGService, build_index
 from src.evidence_policy import EvidencePolicy
+from src.store_factory import load_search_store
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
@@ -79,7 +79,7 @@ def _retriever(
     client: OpenAI,
     settings: Settings,
 ) -> Retriever:
-    store = VectorStore.load(settings.index_dir)
+    store = load_search_store(settings)
 
     return Retriever(
         embedder=_embedder(client, settings),

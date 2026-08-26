@@ -6,6 +6,7 @@ from src.models import SearchResult
 
 class SearchStore(Protocol):
     # src\vector_store.py
+    # src\qdrant_vector_store.py
     def search(
         self,
         query: np.ndarray,
