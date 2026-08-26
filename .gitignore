@@ -13,3 +13,4 @@ docs/
 .pytest-local-*/
 *.egg-info/
 evaluation/*report*.json
+.vscode/
