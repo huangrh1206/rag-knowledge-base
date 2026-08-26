@@ -1,13 +1,13 @@
 from pathlib import Path
 from types import SimpleNamespace
-
+import pytest
 import numpy as np
 
 from src.cli import _retriever, build_parser, print_answer
 from src.config import Settings
 from src.models import Answer, Citation
 from src.vector_store import VectorStore
-
+from src.rag_service import IndexReport
 
 def test_parser_accepts_index_ask_and_chat_commands() -> None:
     parser = build_parser()
@@ -52,3 +52,79 @@ def test_retriever_uses_settings_top_k_and_threshold(
     assert retriever._top_k == 7
     assert retriever._threshold == 0.42
     assert retriever._embedder._api is client.embeddings
+
+def test_index_uses_qdrant_backend(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    import src.cli as cli_module
+
+    settings = Settings(
+        api_key="test-key",
+        base_url=None,
+        chat_model="chat-model",
+        embedding_model="embedding-model",
+        vector_store_backend="qdrant",
+        qdrant_path=tmp_path / "qdrant",
+        qdrant_collection="rag_chunks",
+    )
+
+    calls: list[dict[str, object]] = []
+
+    class FakeSettings:
+        pass
+
+    monkeypatch.setattr(
+        cli_module.Settings,
+        "from_env",
+        classmethod(lambda cls: settings),
+    )
+    monkeypatch.setattr(
+        cli_module,
+        "_client",
+        lambda current_settings: SimpleNamespace(
+            embeddings=object(),
+        ),
+    )
+    monkeypatch.setattr(
+        cli_module,
+        "_embedder",
+        lambda client, current_settings: object(),
+    )
+
+    def fake_build_qdrant_index(**kwargs: object) -> IndexReport:
+        calls.append(kwargs)
+        return IndexReport(
+            document_count=1,
+            chunk_count=2,
+            errors={},
+        )
+
+    monkeypatch.setattr(
+        cli_module,
+        "build_qdrant_index",
+        fake_build_qdrant_index,
+    )
+
+    monkeypatch.setattr(
+        cli_module,
+        "build_index",
+        lambda **kwargs: pytest.fail(
+            "NumPy builder should not be called"
+        ),
+    )
+
+    monkeypatch.setattr(
+        cli_module,
+        "build_parser",
+        lambda: SimpleNamespace(
+            parse_args=lambda: SimpleNamespace(
+                command="index",
+                directory=tmp_path / "documents",
+            )
+        ),
+    )
+
+    assert cli_module.main() == 0
+    assert calls[0]["qdrant_path"] == tmp_path / "qdrant"
+    assert calls[0]["collection_name"] == "rag_chunks"

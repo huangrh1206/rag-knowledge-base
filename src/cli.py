@@ -12,7 +12,7 @@ from src.embeddings import EmbeddingClient
 from src.retriever import Retriever
 from src.agent import KnowledgeAgent
 from src.generator import AnswerGenerator
-from src.rag_service import RAGService, build_index
+from src.rag_service import RAGService, build_index, build_qdrant_index
 from src.evidence_policy import EvidencePolicy
 from src.store_factory import load_search_store
 
@@ -101,13 +101,31 @@ def main() -> int:
         client = _client(settings)
 
         if args.command == "index":
-            report = build_index(
-                document_dir=args.directory,
-                index_dir=settings.index_dir,
-                embedder=_embedder(client, settings),
-                chunk_size=settings.chunk_size,
-                overlap=settings.chunk_overlap,
-            )
+            embedder = _embedder(client, settings)
+            if settings.vector_store_backend == "nmupy":
+                report = build_index(
+                    document_dir=args.directory,
+                    index_dir=settings.index_dir,
+                    embedder=embedder,
+                    chunk_size=settings.chunk_size,
+                    overlap=settings.chunk_overlap,
+                )
+
+            elif settings.vector_store_backend == "qdrant":
+                report = build_qdrant_index(
+                    document_dir=args.directory,
+                    qdrant_path=settings.qdrant_path,
+                    collection_name=settings.qdrant_collection,
+                    embedder=embedder,
+                    chunk_size=settings.chunk_size,
+                    overlap=settings.chunk_overlap,
+                )
+
+            else:
+                raise ValueError(
+                    f"unsupported vector store backend: "
+                    f"{settings.vector_store_backend}"
+                )
 
             print(
                 f"Indexed {report.document_count} documents "
