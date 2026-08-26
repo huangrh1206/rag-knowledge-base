@@ -18,6 +18,9 @@ class Settings:
     evidence_minimum_score: float = 0.50
     evidence_minimum_results: int = 1
     index_dir:Path = Path("storage/index")
+    vector_store_backend: str = "numpy"
+    qdrant_path: Path = Path("storage/qdrant")
+    qdrant_collection: str = "rag_chunks"
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -48,6 +51,9 @@ class Settings:
             evidence_minimum_score=float(os.getenv("RAG_EVIDENCE_MIN_SCORE", 0.50)),
             evidence_minimum_results=int(os.getenv("RAG_EVIDENCE_MIN_RESULTS", 1)),
             index_dir=Path(os.getenv("RAG_INDEX_DIR", "storage/index")),
+            vector_store_backend=os.getenv("RAG_VECTOR_STORE_BACKEND", "numpy").strip().lower(),
+            qdrant_path=Path(os.getenv("RAG_QDRANT_PATH", "storage/qdrant")),
+            qdrant_collection=os.getenv("RAG_QDRANT_COLLECTION", "rag_chunks").strip(),
         )
 
         if settings.chunk_size <= 0:
@@ -74,5 +80,16 @@ class Settings:
             raise ValueError(
                 "evidence minimum results must be positive."
             )
+
+        if settings.vector_store_backend not in {"numpy", "qdrant"}:
+            raise ValueError(
+                "vector store backend must be numpy or qdrant."
+            )
+
+        if not settings.qdrant_collection:
+            raise ValueError(
+                "qdrant collection cannot be empty"
+            )
+        
         return settings
     
