@@ -116,3 +116,17 @@ def validate_manifest(manifest: IndexManifest) -> None:
             "chunk count must be positive"
         )
 
+def qdrant_manifest_directory(
+    qdrant_path: Path,
+    collection_name: str,
+) -> Path:
+    if not collection_name.strip():
+        raise ValueError("collection_name cannot be empty")
+
+    qdrant_path = Path(qdrant_path)
+
+    return (
+        qdrant_path.parent
+        / f"{qdrant_path.name}-manifests"
+        / collection_name
+    )

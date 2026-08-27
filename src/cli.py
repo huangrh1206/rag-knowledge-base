@@ -107,6 +107,7 @@ def main() -> int:
                     document_dir=args.directory,
                     index_dir=settings.index_dir,
                     embedder=embedder,
+                    embedding_model=settings.embedding_model,
                     chunk_size=settings.chunk_size,
                     overlap=settings.chunk_overlap,
                 )
@@ -117,6 +118,7 @@ def main() -> int:
                     qdrant_path=settings.qdrant_path,
                     collection_name=settings.qdrant_collection,
                     embedder=embedder,
+                    embedding_model=settings.embedding_model,
                     chunk_size=settings.chunk_size,
                     overlap=settings.chunk_overlap,
                 )

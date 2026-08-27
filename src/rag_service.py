@@ -14,6 +14,12 @@ from src.evidence_policy import EvidencePolicy
 from src.generator import INSUFFICIENT_EVIDENCE
 from src.citation_validator import validate_citations, citations_for_numbers
 from src.qdrant_vector_store import QdrantVectorStore
+from src.index_manifest import (
+    IndexManifest, 
+    qdrant_manifest_directory, 
+    write_manifest
+)
+    
 
 class BatchEmbedder(Protocol):# EmbeddingClient
     # src\embeddings.py
@@ -140,6 +146,7 @@ def build_index(
     document_dir: Path,
     index_dir: Path,
     embedder: BatchEmbedder,
+    embedding_model: str,
     chunk_size: int,
     overlap: int,
 ) -> IndexReport:
@@ -164,6 +171,20 @@ def build_index(
         embeddings,
     ).save(index_dir)
 
+    write_manifest(
+        directory=index_dir,
+        manifest=IndexManifest(
+            schema_version=1,
+            backend="numpy",
+            embedding_model=embedding_model,
+            vector_dimension=embeddings.shape[1],
+            chunk_size=chunk_size,
+            chunk_overlap=overlap,
+            document_count=documents_count,
+            chunk_count=len(chunks),
+        )
+    )
+
     return IndexReport(
         document_count=documents_count,
         chunk_count=len(chunks),
@@ -176,6 +197,7 @@ def build_qdrant_index(
     qdrant_path: Path,
     collection_name: str,
     embedder: BatchEmbedder,
+    embedding_model: str,
     chunk_size: int,
     overlap: int,
 ) -> IndexReport:
@@ -209,6 +231,22 @@ def build_qdrant_index(
     finally:
         client.close()
 
+    write_manifest(
+        directory=qdrant_manifest_directory(
+            qdrant_path=qdrant_path,
+            collection_name=collection_name,
+        ),
+        manifest=IndexManifest(
+            schema_version=1,
+            backend="qdrant",
+            embedding_model=embedding_model,
+            vector_dimension=embeddings.shape[1],
+            chunk_size=chunk_size,
+            chunk_overlap=overlap,
+            document_count=documents_count,
+            chunk_count=len(chunks),
+        ),
+    )
 
     return IndexReport(
         document_count=documents_count,

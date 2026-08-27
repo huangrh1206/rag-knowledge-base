@@ -4,11 +4,14 @@ import numpy as np
 import pytest
 
 from src.models import Chunk, Paragraph, SearchResult
-from src.rag_service import RAGService, build_index
 from src.evidence_policy import EvidencePolicy
 from src.generator import INSUFFICIENT_EVIDENCE
 from src.rag_service import RAGService, build_index, build_qdrant_index
 from src.qdrant_vector_store import QdrantVectorStore
+from src.index_manifest import (
+    load_manifest,
+    qdrant_manifest_directory,
+)
 
 class FakeRetriever:
     def search(self, question: str) -> list[SearchResult]:
@@ -73,16 +76,25 @@ def test_build_index_saves_all_chunks(
         document_dir=tmp_path / "docs",
         index_dir=tmp_path / "index",
         embedder=FakeEmbedder(),
+        embedding_model="embedding-model",
         chunk_size=700,
         overlap=100,
     )
+
+    manifest = load_manifest(tmp_path / "index")
 
     assert report.document_count == 1
     assert report.chunk_count == 1
     assert report.errors == {}
     assert (tmp_path / "index" / "chunks.json").exists()
     assert (tmp_path / "index" / "embeddings.npy").exists()
-
+    assert manifest.backend == "numpy"
+    assert manifest.embedding_model == "embedding-model"
+    assert manifest.vector_dimension == 2
+    assert manifest.chunk_size == 700
+    assert manifest.chunk_overlap == 100
+    assert manifest.document_count == 1
+    assert manifest.chunk_count == 1    
 
 def test_build_index_rejects_documents_without_chunks(
     tmp_path: Path,
@@ -98,6 +110,7 @@ def test_build_index_rejects_documents_without_chunks(
             document_dir=tmp_path / "docs",
             index_dir=tmp_path / "index",
             embedder=FakeEmbedder(),
+            embedding_model="embedding-model",
             chunk_size=700,
             overlap=100,
         )
@@ -171,6 +184,7 @@ def test_build_index_enriches_embedding_text_with_document_title(
         document_dir=tmp_path / "documents",
         index_dir=tmp_path / "index",
         embedder=embedder,
+        embedding_model="embedding-model",
         chunk_size=700,
         overlap=100,
     )
@@ -248,13 +262,25 @@ def test_build_qdrant_index_writes_collection(
         qdrant_path=qdrant_path,
         collection_name="rag_chunks",
         embedder=embedder,
+        embedding_model="embedding-model",
         chunk_size=700,
         overlap=100,
+    )
+
+    manifest = load_manifest(
+        qdrant_manifest_directory(
+            qdrant_path=qdrant_path,
+            collection_name="rag_chunks",
+        )
     )
 
     assert report.document_count == 1
     assert report.chunk_count == 1
     assert report.errors == {}
+    assert manifest.backend == "qdrant"
+    assert manifest.embedding_model == "embedding-model"
+    assert manifest.vector_dimension == 2
+    assert manifest.chunk_count == 1
 
     from qdrant_client import QdrantClient
 
@@ -275,3 +301,4 @@ def test_build_qdrant_index_writes_collection(
         assert results[0].chunk.source == "guide.docx"
     finally:
         client.close()
+
