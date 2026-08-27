@@ -102,7 +102,7 @@ def main() -> int:
 
         if args.command == "index":
             embedder = _embedder(client, settings)
-            if settings.vector_store_backend == "nmupy":
+            if settings.vector_store_backend == "numpy":
                 report = build_index(
                     document_dir=args.directory,
                     index_dir=settings.index_dir,
