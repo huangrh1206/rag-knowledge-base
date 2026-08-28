@@ -158,3 +158,17 @@ def validate_compatibility(
         raise ManifestError(
             "chunk overlap does not match index manifest"
         )
+
+def validate_vector_dimension(
+    manifest: IndexManifest,
+    actual_dimension: int,
+) -> None:
+    if actual_dimension <= 0:
+        raise ManifestError(
+            "actual vector dimension must be positive"
+        )
+
+    if manifest.vector_dimension != actual_dimension:
+        raise ManifestError(
+            "vector dimension does not match index manifest"
+        )

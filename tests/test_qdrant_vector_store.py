@@ -53,6 +53,7 @@ def test_qdrant_store_returns_highest_score_first() -> None:
     ]
     assert results[0].score > results[1].score
     assert results[0].chunk.source == "guide.docx"
+    assert store.vector_dimension == 2
 
 
 def test_qdrant_store_rejects_count_mismatch() -> None:

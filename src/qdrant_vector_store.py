@@ -22,6 +22,11 @@ class QdrantVectorStore:
         self._collection_name = collection_name
         self._vector_size = vector_size
 
+    @property
+    def vector_dimension(self) -> int:
+        return self._vector_size
+
+
     @classmethod
     def create(
         cls,

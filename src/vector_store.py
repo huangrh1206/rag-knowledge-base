@@ -32,6 +32,10 @@ class VectorStore:
             copy=False,
         )
 
+    @property
+    def vector_dimension(self) -> int:
+        return self.embeddings.shape[1]
+
     def search(
         self,
         query: np.ndarray,

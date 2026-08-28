@@ -11,6 +11,7 @@ from src.index_manifest import (
     load_manifest,
     qdrant_manifest_directory,
     validate_compatibility,
+    validate_vector_dimension,
 )
 
 def load_search_store(
@@ -28,7 +29,14 @@ def load_search_store(
             chunk_overlap=settings.chunk_overlap,
         )
 
-        return VectorStore.load(settings.index_dir)
+        store = VectorStore.load(settings.index_dir)
+
+        validate_vector_dimension(
+            manifest,
+            store.vector_dimension,
+        )
+
+        return store
 
     if settings.vector_store_backend == "qdrant":
         manifest_dir = qdrant_manifest_directory(
@@ -48,10 +56,17 @@ def load_search_store(
         client = qdrant_client or QdrantClient(
             path=str(settings.qdrant_path),
         )
-        return QdrantVectorStore.load(
+        store = QdrantVectorStore.load(
             client=client,
             collection_name=settings.qdrant_collection,
         )
+
+        validate_vector_dimension(
+            manifest,
+            store.vector_dimension,
+        )
+
+        return store
 
     raise ValueError(
          f"unsupported vector store backend: "

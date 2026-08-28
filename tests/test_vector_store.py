@@ -193,3 +193,11 @@ def test_save_preserves_existing_index_when_vector_write_fails(
         np.load(tmp_path / "embeddings.npy"),
         np.eye(2, dtype=np.float32),
     )
+
+def test_vector_store_exposes_vector_dimension() -> None:
+    store = VectorStore(
+        sample_chunks(),
+        np.eye(2, dtype=np.float32),
+    )
+
+    assert store.vector_dimension == 2

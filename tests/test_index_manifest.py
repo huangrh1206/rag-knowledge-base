@@ -126,3 +126,23 @@ def test_manifest_accepts_matching_configuration() -> None:
         chunk_size=700,
         chunk_overlap=100,
     )
+
+def test_manifest_rejects_vector_dimension_mismatch() -> None:
+    from src.index_manifest import validate_vector_dimension
+
+    with pytest.raises(
+        ManifestError,
+        match="vector dimension does not match",
+    ):
+        validate_vector_dimension(
+            manifest(),
+            actual_dimension=768,
+        )
+
+def test_manifest_accepts_matching_vector_dimension() -> None:
+    from src.index_manifest import validate_vector_dimension
+
+    validate_vector_dimension(
+        manifest(),
+        actual_dimension=1536,
+    )
