@@ -83,3 +83,46 @@ def test_manifest_rejects_missing_file(tmp_path) -> None:
         match="cannot read manifest",
     ):
         load_manifest(tmp_path)
+
+def test_manifest_rejects_backend_mismatch() -> None:
+    from src.index_manifest import validate_compatibility
+
+    with pytest.raises(
+        ManifestError,
+        match="backend does not match",
+    ):
+        validate_compatibility(
+            manifest(),
+            backend="qdrant",
+            embedding_model="text-embedding-3-small",
+            chunk_size=700,
+            chunk_overlap=100,
+        )
+
+
+def test_manifest_rejects_embedding_model_mismatch() -> None:
+    from src.index_manifest import validate_compatibility
+
+    with pytest.raises(
+        ManifestError,
+        match="embedding model does not match",
+    ):
+        validate_compatibility(
+            manifest(),
+            backend="numpy",
+            embedding_model="different-model",
+            chunk_size=700,
+            chunk_overlap=100,
+        )
+
+
+def test_manifest_accepts_matching_configuration() -> None:
+    from src.index_manifest import validate_compatibility
+
+    validate_compatibility(
+        manifest(),
+        backend="numpy",
+        embedding_model="text-embedding-3-small",
+        chunk_size=700,
+        chunk_overlap=100,
+    )

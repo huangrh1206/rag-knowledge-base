@@ -130,3 +130,31 @@ def qdrant_manifest_directory(
         / f"{qdrant_path.name}-manifests"
         / collection_name
     )
+
+def validate_compatibility(
+    manifest: IndexManifest,
+    *,
+    backend: str,
+    embedding_model: str,
+    chunk_size: int,
+    chunk_overlap: int,
+) -> None:
+    if manifest.backend != backend:
+        raise ManifestError(
+            "index backend does not match current configuration"
+        )
+
+    if manifest.embedding_model != embedding_model:
+        raise ManifestError(
+            "embedding model does not match index manifest"
+        )
+
+    if manifest.chunk_size != chunk_size:
+        raise ManifestError(
+            "chunk size does not match index manifest"
+        )
+
+    if manifest.chunk_overlap != chunk_overlap:
+        raise ManifestError(
+            "chunk overlap does not match index manifest"
+        )
