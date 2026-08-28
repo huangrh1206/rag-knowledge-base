@@ -302,3 +302,53 @@ def test_build_qdrant_index_writes_collection(
     finally:
         client.close()
 
+class TwoResultRetriever:
+    def search(self, question: str) -> list[SearchResult]:
+        return [
+            SearchResult(
+                Chunk(
+                    "guide-0000",
+                    "第一条证据",
+                    "first.docx",
+                    1,
+                    1,
+                ),
+                0.95,
+            ),
+            SearchResult(
+                Chunk(
+                    "guide-0001",
+                    "第二条证据",
+                    "second.docx",
+                    3,
+                    4,
+                ),
+                0.90,
+            ),
+        ]
+
+
+class SecondCitationGenerator:
+    def generate(
+        self,
+        question: str,
+        results: list[SearchResult],
+    ) -> str:
+        return "答案只使用第二条证据 [2]"
+
+
+def test_service_maps_only_referenced_citations() -> None:
+    service = RAGService(
+        retriever=TwoResultRetriever(),
+        generator=SecondCitationGenerator(),
+    )
+
+    answer = service.ask("测试引用映射")
+
+    assert answer.answer == "答案只使用第二条证据 [2]"
+    assert len(answer.retrieved_chunks) == 2
+    assert len(answer.citations) == 1
+    assert answer.citations[0].number == 2
+    assert answer.citations[0].source == "second.docx"
+    assert answer.citations[0].paragraph_start == 3
+    assert answer.citations[0].paragraph_end == 4
