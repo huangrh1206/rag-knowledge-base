@@ -8,6 +8,7 @@ class EvaluationSummary:
     recall_at_5: float
     mrr: float
     answerable_acceptance: float
+    keyword_coverage: float
     unanswerable_count: int
     refusal_accuracy: float
 
@@ -34,6 +35,7 @@ def evaluate_retrieval(
     retrieved_sources: dict[str, list[str]],
     refusal_predictions: dict[str, bool],
     evidence_predictions: dict[str, bool],
+    keyword_coverages: dict[str, float] | None = None,
 ) -> EvaluationSummary:
     answerable = [
         case
@@ -61,6 +63,12 @@ def evaluate_retrieval(
 
     if not unanswerable:
         raise ValueError("evaluation requires unanswerable cases")
+
+    keyword_coverages = keyword_coverages or {}
+    average_keyword_coverage = sum(
+        keyword_coverages.get(str(case["id"]), 0.0)
+        for case in answerable
+    ) / len(answerable)
 
     recall_1_hits = 0
     recall_5_hits = 0
@@ -98,6 +106,7 @@ def evaluate_retrieval(
         recall_at_5=recall_5_hits / len(answerable),
         mrr=sum(reciprocal_ranks) / len(answerable),
         answerable_acceptance=accepted_answerable / len(answerable),
+        keyword_coverage=average_keyword_coverage,
         unanswerable_count=len(unanswerable),
         refusal_accuracy=corrent_refusals / len(unanswerable),
     )

@@ -8,6 +8,7 @@ from src.config import Settings
 from src.models import Answer, Citation
 from src.vector_store import VectorStore
 from src.rag_service import IndexReport
+from src.index_manifest import IndexManifest, write_manifest
 
 def test_parser_accepts_index_ask_and_chat_commands() -> None:
     parser = build_parser()
@@ -36,6 +37,21 @@ def test_retriever_uses_settings_top_k_and_threshold(
 ) -> None:
     index_dir = tmp_path / "index"
     VectorStore([], np.empty((0, 2), dtype=np.float32)).save(index_dir)
+
+    manifest = write_manifest(
+        index_dir,
+        IndexManifest(
+            schema_version=1,
+            backend="numpy",
+            embedding_model="embedding-model",
+            vector_dimension=2,
+            chunk_size=700,
+            chunk_overlap=100,
+            document_count=1,
+            chunk_count=1,
+        ),
+    )
+
     settings = Settings(
         api_key="test-key",
         base_url=None,

@@ -67,6 +67,7 @@ def run_evaluation(
     refusal_predictions: dict[str, bool] = {}
     evidence_predictions: dict[str, bool] = {}
     details: list[dict[str, object]] = []
+    keyword_coverages: dict[str, float] = {}
 
     for case in questions:
         case_id = str(case["id"])
@@ -76,6 +77,7 @@ def run_evaluation(
             keywords=case.get("expected_keywords", []),
             results=results,
         )
+        keyword_coverages[case_id] = keywords_coverage
         
         sources = [
             result.chunk.source
@@ -121,6 +123,7 @@ def run_evaluation(
         retrieved_sources=retrieved_sources,
         refusal_predictions=refusal_predictions,
         evidence_predictions=evidence_predictions,
+        keyword_coverages=keyword_coverages,
     )
 
     return {

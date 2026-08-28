@@ -35,6 +35,10 @@ def  test_evaluation_calculates_recall_and_mrr() -> None:
             "q001": True,
             "q002": True,
         },
+        keyword_coverages={
+            "q001": 1.0,
+            "q002": 0.5,
+        },
     )
 
     assert summary.answerable_count == 2
@@ -44,6 +48,7 @@ def  test_evaluation_calculates_recall_and_mrr() -> None:
     assert summary.unanswerable_count == 1
     assert summary.refusal_accuracy == pytest.approx(1.0)
     assert summary.answerable_acceptance == pytest.approx(1.0)
+    assert summary.keyword_coverage == pytest.approx(0.75)
 
 def test_missing_refusal_prediction_counts_as_incorrect() -> None:
     cases = [
