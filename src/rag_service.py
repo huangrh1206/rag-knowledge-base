@@ -1,6 +1,6 @@
 import logging
 import time
-
+import uuid
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
@@ -73,6 +73,7 @@ class RAGService:
         )
 
     def ask(self, question: str) -> Answer:
+        request_id = uuid.uuid4().hex[:12]
         total_started = time.perf_counter()
         retrieval_started = time.perf_counter()
         results = self._retriever.search(question)
@@ -82,7 +83,9 @@ class RAGService:
         ) * 1000
 
         logger.info(
-            "retrieval completed result_count=%d retrieval_ms=%.2f",
+            "request_id=%s retrieval completed "
+            "result_count=%d retrieval_ms=%.2f",
+            request_id,
             len(results),
             retrieval_ms,
         )
@@ -91,7 +94,9 @@ class RAGService:
 
         if not decision.allowed:
             logger.info(
-                "request refused reason=%s result_count=%d total_ms=%.2f",
+                "request_id=%s request refused "
+                "reason=%s result_count=%d total_ms=%.2f",
+                request_id,
                 decision.reason,
                 len(results),
                 (time.perf_counter() - total_started) * 1000,
@@ -113,7 +118,8 @@ class RAGService:
         ) * 1000
 
         logger.info(
-            "generation completed generation_ms=%.2f",
+            "request_id=%s generation completed generation_ms=%.2f",
+            request_id,
             generation_ms,
         )
 
@@ -144,7 +150,9 @@ class RAGService:
         )
 
         logger.info(
-            "request completed citation_count=%d total_ms=%.2f",
+            "request_id=%s request completed "
+            "citation_count=%d total_ms=%.2f",
+            request_id,
             len(citations),
             (time.perf_counter() - total_started) * 1000,
         )

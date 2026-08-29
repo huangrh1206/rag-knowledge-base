@@ -2,7 +2,7 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-
+import re
 from src.models import Chunk, Paragraph, SearchResult
 from src.evidence_policy import EvidencePolicy
 from src.generator import INSUFFICIENT_EVIDENCE
@@ -376,3 +376,29 @@ def test_service_logs_retrieval_and_generation(caplog) -> None:
         "request completed" in message
         for message in messages
     )
+
+def test_service_uses_one_request_id_for_all_logs(caplog) -> None:
+    service = RAGService(
+        retriever=FakeRetriever(),
+        generator=FakeGenerator(),
+    )
+
+    with caplog.at_level("INFO", logger="src.rag_service"):
+        service.ask("How do I declare parameters?")
+
+    messages = [
+        record.getMessage()
+        for record in caplog.records
+    ]
+
+    request_ids = set()
+
+    for message in messages:
+        match = re.search(
+            r"request_id=([0-9a-f]{12})",
+            message,
+        )
+        if match:
+            request_ids.add(match.group(1))
+
+    assert len(request_ids) == 1
