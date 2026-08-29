@@ -15,3 +15,4 @@ docs/
 evaluation/*report*.json
 .vscode/
 log/
+PROJECT_FRAMEWORK.md
