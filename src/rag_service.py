@@ -1,3 +1,6 @@
+import logging
+import time
+
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
@@ -29,6 +32,7 @@ class BatchEmbedder(Protocol):# EmbeddingClient
     ) -> np.ndarray:
         ...
 
+logger = logging.getLogger(__name__)
 
 @dataclass(frozen=True)
 class IndexReport:
@@ -69,20 +73,50 @@ class RAGService:
         )
 
     def ask(self, question: str) -> Answer:
+        total_started = time.perf_counter()
+        retrieval_started = time.perf_counter()
         results = self._retriever.search(question)
+
+        retrieval_ms = (
+            time.perf_counter() - retrieval_started
+        ) * 1000
+
+        logger.info(
+            "retrieval completed result_count=%d retrieval_ms=%.2f",
+            len(results),
+            retrieval_ms,
+        )
+
         decision = self._evidence_policy.evaluate(results)
 
         if not decision.allowed:
+            logger.info(
+                "request refused reason=%s result_count=%d total_ms=%.2f",
+                decision.reason,
+                len(results),
+                (time.perf_counter() - total_started) * 1000,
+            )
+
             return Answer(
                 answer=INSUFFICIENT_EVIDENCE,
                 citations=(),
                 retrieved_chunks=tuple(results),
             )
         
+        generation_started = time.perf_counter()
         text = self._generator.generate(
             question,
             results,
         )
+        generation_ms = (
+            time.perf_counter() - generation_started
+        ) * 1000
+
+        logger.info(
+            "generation completed generation_ms=%.2f",
+            generation_ms,
+        )
+
 
         validation = validate_citations(
             answer=text,
@@ -107,6 +141,12 @@ class RAGService:
         citations = citations_for_numbers(
             results=results,
             numbers=validation.referenced_numbers,
+        )
+
+        logger.info(
+            "request completed citation_count=%d total_ms=%.2f",
+            len(citations),
+            (time.perf_counter() - total_started) * 1000,
         )
 
         return Answer(

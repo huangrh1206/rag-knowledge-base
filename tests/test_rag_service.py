@@ -352,3 +352,27 @@ def test_service_maps_only_referenced_citations() -> None:
     assert answer.citations[0].source == "second.docx"
     assert answer.citations[0].paragraph_start == 3
     assert answer.citations[0].paragraph_end == 4
+
+def test_service_logs_retrieval_and_generation(caplog) -> None:
+    service = RAGService(
+        retriever=FakeRetriever(),
+        generator=FakeGenerator(),
+    )
+
+    with caplog.at_level("INFO", logger="src.rag_service"):
+        service.ask("How do I declare parameters?")
+
+    messages = [record.getMessage() for record in caplog.records]
+
+    assert any(
+        "retrieval completed" in message
+        for message in messages
+    )
+    assert any(
+        "generation completed" in message
+        for message in messages
+    )
+    assert any(
+        "request completed" in message
+        for message in messages
+    )

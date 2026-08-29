@@ -105,6 +105,18 @@ def run_evaluation(
                 "id": case_id,
                 "category": case["category"],
                 "retrieved_sources": sources,
+                "retrieved_chunk_ids": [
+                    result.chunk.id
+                    for result in results
+                ],
+                "retrieved_paragraph_spans": [
+                    {
+                        "source": result.chunk.source,
+                        "start": result.chunk.paragraph_start,
+                        "end": result.chunk.paragraph_end,
+                    }
+                    for result in results
+                ],
                 "top_score": round(top_score, 4),
                 "second_score": round(second_score, 4),
                 "evidence_allowed": accepted,
