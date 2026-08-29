@@ -1,3 +1,5 @@
+from datetime import datetime
+
 import argparse
 import logging
 from pathlib import Path
@@ -15,6 +17,27 @@ from src.generator import AnswerGenerator
 from src.rag_service import RAGService, build_index, build_qdrant_index
 from src.evidence_policy import EvidencePolicy
 from src.store_factory import load_search_store
+
+def configure_logging() -> None:
+    log_dir = Path("log")
+    log_dir.mkdir(parents=True, exist_ok=True)
+
+    log_file = log_dir / (
+        f"rag-{datetime.now().strftime('%Y-%m-%d')}.log"
+    )
+
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s %(name)s %(message)s",
+        handlers=[
+            logging.FileHandler(
+                log_file,
+                encoding="utf-8",
+            ),
+            logging.StreamHandler(),
+        ],
+        force=True,
+    )
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
@@ -89,10 +112,7 @@ def _retriever(
     )
 
 def main() -> int:
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(levelname)s %(message)s",
-    )
+    configure_logging()
 
     args = build_parser().parse_args()
 

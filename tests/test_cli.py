@@ -10,6 +10,10 @@ from src.vector_store import VectorStore
 from src.rag_service import IndexReport
 from src.index_manifest import IndexManifest, write_manifest
 
+from pathlib import Path
+
+from src.cli import configure_logging
+
 def test_parser_accepts_index_ask_and_chat_commands() -> None:
     parser = build_parser()
 
@@ -144,3 +148,19 @@ def test_index_uses_qdrant_backend(
     assert cli_module.main() == 0
     assert calls[0]["qdrant_path"] == tmp_path / "qdrant"
     assert calls[0]["collection_name"] == "rag_chunks"
+
+def test_configure_logging_creates_dated_log_file(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    monkeypatch.chdir(tmp_path)
+
+    configure_logging()
+
+    log_file = (
+        tmp_path
+        / "log"
+        / f"rag-{__import__('datetime').datetime.now().strftime('%Y-%m-%d')}.log"
+    )
+
+    assert log_file.exists()
