@@ -402,3 +402,31 @@ def test_service_uses_one_request_id_for_all_logs(caplog) -> None:
             request_ids.add(match.group(1))
 
     assert len(request_ids) == 1
+
+class FailingRetriever:
+    def search(self, question: str) -> list[SearchResult]:
+        raise RuntimeError("retriever unavailable")
+
+
+class FailingGenerator:
+    def generate(
+        self,
+        question: str,
+        results: list[SearchResult],
+    ) -> str:
+        raise RuntimeError("generator unavailable")
+
+def test_service_logs_retrieval_failure(caplog) -> None:
+    service = RAGService(
+        retriever=FailingRetriever(),
+        generator=FakeGenerator(),
+    )
+
+    with caplog.at_level("ERROR", logger="src.rag_service"):
+        with pytest.raises(RuntimeError, match="retriever unavailable"):
+            service.ask("test")
+
+    assert any(
+        "retrieval failed" in record.getMessage()
+        for record in caplog.records
+    )

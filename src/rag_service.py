@@ -76,7 +76,14 @@ class RAGService:
         request_id = uuid.uuid4().hex[:12]
         total_started = time.perf_counter()
         retrieval_started = time.perf_counter()
-        results = self._retriever.search(question)
+        try:
+            results = self._retriever.search(question)
+        except Exception:
+            logger.exception(
+                "request_id=%s retrieval failed",
+                request_id,
+            )
+            raise
 
         retrieval_ms = (
             time.perf_counter() - retrieval_started
@@ -109,10 +116,17 @@ class RAGService:
             )
         
         generation_started = time.perf_counter()
-        text = self._generator.generate(
-            question,
-            results,
-        )
+        try:
+            text = self._generator.generate(
+                question,
+                results,
+            )
+        except Exception:
+            logger.exception(
+                "request_id=%s generation failed",
+                request_id,
+            )
+            raise
         generation_ms = (
             time.perf_counter() - generation_started
         ) * 1000
@@ -136,9 +150,21 @@ class RAGService:
             )
 
             if invalid_numbers:
+                logger.warning(
+                    "request_id=%s citation validation failed "
+                    "invalid_numbers=%s",
+                    request_id,
+                    invalid_numbers,
+                )
                 raise ValueError(
                     f"model returned invalid citation numbers: {invalid_numbers}"
                 )
+
+            logger.warning(
+                "request_id=%s citation validation failed "
+                "reason=no_valid_citation",
+                request_id,
+            )
 
             raise ValueError(
                 "model answer must contain at least one valid citation"
