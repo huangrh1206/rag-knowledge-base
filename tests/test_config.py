@@ -80,3 +80,18 @@ def test_settings_reject_invalid_vector_store_backend(
         match="vector store backend",
     ):
         Settings.from_env()
+
+def test_settings_reject_non_positive_timeout(monkeypatch) -> None:
+    monkeypatch.setenv("RAG_API_KEY", "test-key")
+    monkeypatch.setenv("RAG_REQUEST_TIMEOUT", "0")
+
+    with pytest.raises(ValueError, match="request timeout"):
+        Settings.from_env()
+
+
+def test_settings_reject_negative_retries(monkeypatch) -> None:
+    monkeypatch.setenv("RAG_API_KEY", "test-key")
+    monkeypatch.setenv("RAG_MAX_RETRIES", "-1")
+
+    with pytest.raises(ValueError, match="max retries"):
+        Settings.from_env()

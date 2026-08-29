@@ -11,6 +11,8 @@ class Settings:
     chat_model:str
     embedding_model:str
     embedding_batch_size: int = 20
+    request_timeout: float = 30.0
+    max_retries: int = 2
     chunk_size:int = 700
     chunk_overlap: int = 100
     top_k:int = 5
@@ -43,6 +45,12 @@ class Settings:
             ),
             embedding_batch_size=int(
                 os.getenv("RAG_EMBEDDING_BATCH_SIZE", 20)
+            ),
+            request_timeout=float(
+                os.getenv("RAG_REQUEST_TIMEOUT", 30.0)
+            ),
+            max_retries=int(
+                os.getenv("RAG_MAX_RETRIES", 2)
             ),
             chunk_size=int(os.getenv("RAG_CHUNK_SIZE", 700)),
             chunk_overlap=int(os.getenv("RAG_CHUNK_OVERLAP", 100)),
@@ -89,6 +97,16 @@ class Settings:
         if not settings.qdrant_collection:
             raise ValueError(
                 "qdrant collection cannot be empty"
+            )
+
+        if settings.request_timeout <= 0:
+            raise ValueError(
+                "request timeout must be positive."
+            )
+
+        if settings.max_retries < 0:
+            raise ValueError(
+                "max retries must be non-negative."
             )
         
         return settings
