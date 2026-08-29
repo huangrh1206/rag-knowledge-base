@@ -3,23 +3,12 @@ from typing import Protocol
 import numpy as np
 
 from src.models import SearchResult
-
+from src.store_protocol import SearchStore
 
 class QueryEmbedder(Protocol):
     # src\embeddings.py
     def embed_query(self, text: str) -> np.ndarray:
         ...
-
-
-class SearchStore(Protocol):
-    # src\vector_store.py
-    def search(
-        self,
-        query: np.ndarray,
-        top_k: int,
-    ) -> list[SearchResult]:
-        ...
-
 
 class Retriever:
     def __init__(

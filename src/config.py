@@ -11,11 +11,18 @@ class Settings:
     chat_model:str
     embedding_model:str
     embedding_batch_size: int = 20
+    request_timeout: float = 30.0
+    max_retries: int = 2
     chunk_size:int = 700
     chunk_overlap: int = 100
     top_k:int = 5
     similarity_threshold:float = 0.30
+    evidence_minimum_score: float = 0.50
+    evidence_minimum_results: int = 1
     index_dir:Path = Path("storage/index")
+    vector_store_backend: str = "numpy"
+    qdrant_path: Path = Path("storage/qdrant")
+    qdrant_collection: str = "rag_chunks"
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -39,11 +46,22 @@ class Settings:
             embedding_batch_size=int(
                 os.getenv("RAG_EMBEDDING_BATCH_SIZE", 20)
             ),
+            request_timeout=float(
+                os.getenv("RAG_REQUEST_TIMEOUT", 30.0)
+            ),
+            max_retries=int(
+                os.getenv("RAG_MAX_RETRIES", 2)
+            ),
             chunk_size=int(os.getenv("RAG_CHUNK_SIZE", 700)),
             chunk_overlap=int(os.getenv("RAG_CHUNK_OVERLAP", 100)),
             top_k=int(os.getenv("RAG_TOP_K", 5)),
             similarity_threshold=float(os.getenv("RAG_SIMILARITY_THRESHOLD", 0.30)),
+            evidence_minimum_score=float(os.getenv("RAG_EVIDENCE_MIN_SCORE", 0.50)),
+            evidence_minimum_results=int(os.getenv("RAG_EVIDENCE_MIN_RESULTS", 1)),
             index_dir=Path(os.getenv("RAG_INDEX_DIR", "storage/index")),
+            vector_store_backend=os.getenv("RAG_VECTOR_STORE_BACKEND", "numpy").strip().lower(),
+            qdrant_path=Path(os.getenv("RAG_QDRANT_PATH", "storage/qdrant")),
+            qdrant_collection=os.getenv("RAG_QDRANT_COLLECTION", "rag_chunks").strip(),
         )
 
         if settings.chunk_size <= 0:
@@ -60,6 +78,36 @@ class Settings:
         
         if not -1.0 <= settings.similarity_threshold <= 1.0:
             raise ValueError("RAG_SIMILARITY_THRESHOLD must be between -1.0 and 1.0.")
+
+        if not 0.0 <= settings.evidence_minimum_score <= 1.0:
+            raise ValueError(
+                "evidence minimum score must be between 0 and 1."
+            )
+
+        if settings.evidence_minimum_results <= 0:
+            raise ValueError(
+                "evidence minimum results must be positive."
+            )
+
+        if settings.vector_store_backend not in {"numpy", "qdrant"}:
+            raise ValueError(
+                "vector store backend must be numpy or qdrant."
+            )
+
+        if not settings.qdrant_collection:
+            raise ValueError(
+                "qdrant collection cannot be empty"
+            )
+
+        if settings.request_timeout <= 0:
+            raise ValueError(
+                "request timeout must be positive."
+            )
+
+        if settings.max_retries < 0:
+            raise ValueError(
+                "max retries must be non-negative."
+            )
         
         return settings
     

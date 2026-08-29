@@ -1,3 +1,5 @@
+from datetime import datetime
+
 import argparse
 import logging
 from pathlib import Path
@@ -10,11 +12,32 @@ from src.api_client import create_openai_client
 from src.config import Settings
 from src.embeddings import EmbeddingClient
 from src.retriever import Retriever
-from src.vector_store import VectorStore
 from src.agent import KnowledgeAgent
 from src.generator import AnswerGenerator
-from src.rag_service import RAGService, build_index
+from src.rag_service import RAGService, build_index, build_qdrant_index
+from src.evidence_policy import EvidencePolicy
+from src.store_factory import load_search_store
 
+def configure_logging() -> None:
+    log_dir = Path("log")
+    log_dir.mkdir(parents=True, exist_ok=True)
+
+    log_file = log_dir / (
+        f"rag-{datetime.now().strftime('%Y-%m-%d')}.log"
+    )
+
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s %(name)s %(message)s",
+        handlers=[
+            logging.FileHandler(
+                log_file,
+                encoding="utf-8",
+            ),
+            logging.StreamHandler(),
+        ],
+        force=True,
+    )
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
@@ -79,7 +102,7 @@ def _retriever(
     client: OpenAI,
     settings: Settings,
 ) -> Retriever:
-    store = VectorStore.load(settings.index_dir)
+    store = load_search_store(settings)
 
     return Retriever(
         embedder=_embedder(client, settings),
@@ -89,10 +112,7 @@ def _retriever(
     )
 
 def main() -> int:
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(levelname)s %(message)s",
-    )
+    configure_logging()
 
     args = build_parser().parse_args()
 
@@ -101,13 +121,33 @@ def main() -> int:
         client = _client(settings)
 
         if args.command == "index":
-            report = build_index(
-                document_dir=args.directory,
-                index_dir=settings.index_dir,
-                embedder=_embedder(client, settings),
-                chunk_size=settings.chunk_size,
-                overlap=settings.chunk_overlap,
-            )
+            embedder = _embedder(client, settings)
+            if settings.vector_store_backend == "numpy":
+                report = build_index(
+                    document_dir=args.directory,
+                    index_dir=settings.index_dir,
+                    embedder=embedder,
+                    embedding_model=settings.embedding_model,
+                    chunk_size=settings.chunk_size,
+                    overlap=settings.chunk_overlap,
+                )
+
+            elif settings.vector_store_backend == "qdrant":
+                report = build_qdrant_index(
+                    document_dir=args.directory,
+                    qdrant_path=settings.qdrant_path,
+                    collection_name=settings.qdrant_collection,
+                    embedder=embedder,
+                    embedding_model=settings.embedding_model,
+                    chunk_size=settings.chunk_size,
+                    overlap=settings.chunk_overlap,
+                )
+
+            else:
+                raise ValueError(
+                    f"unsupported vector store backend: "
+                    f"{settings.vector_store_backend}"
+                )
 
             print(
                 f"Indexed {report.document_count} documents "
@@ -129,6 +169,10 @@ def main() -> int:
             service = RAGService(
                 retriever=retriever,
                 generator=generator,
+                evidence_policy=EvidencePolicy(
+                    minimum_score=settings.evidence_minimum_score,
+                    minimum_results=settings.evidence_minimum_results,
+                ),
             )
 
             print_answer(service.ask(args.question))

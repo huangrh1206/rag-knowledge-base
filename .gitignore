@@ -10,3 +10,8 @@ storage/
 documents/
 pytest-user-temp/
 docs/
+.pytest-local-*/
+*.egg-info/
+evaluation/*report*.json
+.vscode/
+log/
