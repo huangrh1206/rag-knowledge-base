@@ -4,6 +4,10 @@ import numpy as np
 
 from src.models import SearchResult
 from src.store_protocol import SearchStore
+from src.reranker import DisabledReranker, Reranker
+import logging
+
+logger = logging.getLogger(__name__)
 
 class QueryEmbedder(Protocol):
     # src\embeddings.py
@@ -15,29 +19,46 @@ class Retriever:
         self,
         embedder: QueryEmbedder,
         store: SearchStore,
-        top_k: int,
         threshold: float,
     ) -> None:
         self._embedder = embedder
         self._store = store
-        self._top_k = top_k
         self._threshold = threshold
 
-    def search(self, question: str) -> list[SearchResult]:
+    def search_candidates(
+        self,
+        question: str,
+        limit: int,
+    ) -> list[SearchResult]:
         if not question.strip():
             raise ValueError("question cannot be empty")
+
+        if limit <= 0:
+            raise ValueError("limit must be positive")
+
         query = self._embedder.embed_query(question)
-        results = self._store.search(
+
+        candidates = self._store.search(
             query,
-            self._top_k,
+            limit,
         )
 
         return [
             result
-            for result in results
+            for result in candidates
             if result.score >= self._threshold
         ]
 
+    def search(
+        self, 
+        question: str,
+        limit: int,
+    ) -> list[SearchResult]:
+        """Compatibility alias for Dense-only retrieval."""
+        return self.search_candidates(
+            question,
+            limit=limit,
+        )
 
 def format_evidence(
     results: list[SearchResult],

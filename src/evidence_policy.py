@@ -19,7 +19,12 @@ class EvidencePolicy:
                 reason="not_enough_results",
             )
 
-        if results[0].score < self._minimum_score:
+        highest_vector_score = max(
+            result.score
+            for result in results
+        )
+
+        if highest_vector_score < self._minimum_score:
             return EvidenceDecision(
                 allowed=False,
                 reason="top_score_below_minimum",

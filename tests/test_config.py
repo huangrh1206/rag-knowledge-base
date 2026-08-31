@@ -95,3 +95,78 @@ def test_settings_reject_negative_retries(monkeypatch) -> None:
 
     with pytest.raises(ValueError, match="max retries"):
         Settings.from_env()
+
+def test_rerank_is_disabled_by_default(monkeypatch) -> None:
+    monkeypatch.setenv("RAG_API_KEY", "test-key")
+    monkeypatch.delenv("RAG_RERANK_ENABLED", raising=False)
+    monkeypatch.delenv(
+        "RAG_RETRIEVAL_CANDIDATE_K",
+        raising=False,
+    )
+
+    settings = Settings.from_env()
+
+    assert settings.rerank_enabled is False
+    assert settings.retrieval_candidate_k == 20
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        ("true", True),
+        ("TRUE", True),
+        ("1", True),
+        ("yes", True),
+        ("false", False),
+        ("0", False),
+        ("no", False),
+    ],
+)
+def test_rerank_enabled_parses_boolean(
+    monkeypatch,
+    value: str,
+    expected: bool,
+) -> None:
+    monkeypatch.setenv("RAG_API_KEY", "test-key")
+    monkeypatch.setenv("RAG_RERANK_ENABLED", value)
+
+    settings = Settings.from_env()
+
+    assert settings.rerank_enabled is expected
+
+def test_settings_reject_invalid_rerank_flag(monkeypatch) -> None:
+    monkeypatch.setenv("RAG_API_KEY", "test-key")
+    monkeypatch.setenv("RAG_RERANK_ENABLED", "maybe")
+
+    with pytest.raises(
+        ValueError,
+        match="must be a boolean",
+    ):
+        Settings.from_env()
+
+def test_settings_reject_candidate_k_smaller_than_top_k(
+    monkeypatch,
+) -> None:
+    monkeypatch.setenv("RAG_API_KEY", "test-key")
+    monkeypatch.setenv("RAG_TOP_K", "5")
+    monkeypatch.setenv(
+        "RAG_RETRIEVAL_CANDIDATE_K",
+        "3",
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="candidate k",
+    ):
+        Settings.from_env()
+
+def test_settings_reject_empty_reranker_model(
+    monkeypatch,
+) -> None:
+    monkeypatch.setenv("RAG_API_KEY", "test-key")
+    monkeypatch.setenv("RAG_RERANKER_MODEL", " ")
+
+    with pytest.raises(
+        ValueError,
+        match="reranker model",
+    ):
+        Settings.from_env()

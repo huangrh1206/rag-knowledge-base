@@ -2,15 +2,24 @@ import argparse
 import json
 from dataclasses import asdict
 from pathlib import Path
+import time
+from typing import Protocol
 
-from src.api_client import create_openai_client
-from src.config import Settings
-from src.embeddings import EmbeddingClient
-from src.retriever import Retriever
-from src.vector_store import VectorStore
-from src.evidence_policy import EvidencePolicy
+from openai import OpenAI
 
 from evaluation.metrics import evaluate_retrieval
+from src.models import SearchResult
+from src.api_client import create_openai_client
+from src.config import Settings
+from src.evidence_policy import EvidencePolicy
+from src.retriever_factory import create_retriever
+
+class EvaluationRetriever(Protocol):
+    def search(
+        self,
+        question: str,
+    ) -> list[SearchResult]:
+        ...
 
 def load_questions(path: Path) -> list[dict[str, object]]:
     value = json.loads(
@@ -22,25 +31,17 @@ def load_questions(path: Path) -> list[dict[str, object]]:
 
     return value
 
-def build_retriever(settings: Settings) -> Retriever:
+def build_retriever(settings: Settings) -> EvaluationRetriever:
     client = create_openai_client(settings)
-    embedder = EmbeddingClient(
-        api=client.embeddings,
-        model=settings.embedding_model,
-        batch_size=settings.embedding_batch_size,
-    )
-    store = VectorStore.load(settings.index_dir)
 
-    return Retriever(
-        embedder=embedder,
-        store=store,
-        top_k=settings.top_k,
-        threshold=settings.similarity_threshold,
+    return create_retriever(
+        client=client,
+        settings=settings,
     )
 
 def calculate_keyword_coverage(
     keywords: object,
-    results: list,
+    results: list[SearchResult],
 ) -> float:
     if not isinstance(keywords, list) or not keywords:
         return 1.0
@@ -60,7 +61,7 @@ def calculate_keyword_coverage(
 
 def run_evaluation(
     questions: list[dict[str, object]],
-    retriever: Retriever,
+    retriever: EvaluationRetriever,
     evidence_policy: EvidencePolicy,
 ) -> dict[str, object]:
     retrieved_sources: dict[str, list[str]] = {}
@@ -68,11 +69,20 @@ def run_evaluation(
     evidence_predictions: dict[str, bool] = {}
     details: list[dict[str, object]] = []
     keyword_coverages: dict[str, float] = {}
+    retrieval_times_ms: list[float] = []
 
     for case in questions:
         case_id = str(case["id"])
         question = str(case["question"])
+
+        started = time.perf_counter()
+
         results = retriever.search(question)
+        retrieval_ms = (
+            time.perf_counter() - started
+        ) * 1000
+        retrieval_times_ms.append(retrieval_ms)
+
         keywords_coverage = calculate_keyword_coverage(
             keywords=case.get("expected_keywords", []),
             results=results,
@@ -84,12 +94,45 @@ def run_evaluation(
             for result in results
         ]
 
+        chunk_ids = [
+            result.chunk.id
+            for result in results
+        ]
+
+        paragraph_spans = [
+            {
+                "source": result.chunk.source,
+                "start": result.chunk.paragraph_start,
+                "end": result.chunk.paragraph_end,
+            }
+            for result in results
+        ]
+
         retrieved_sources[case_id] = sources
 
-        top_score = results[0].score if results else 0.0
-        second_score = results[1].score if len(results) > 1 else 0.0
+        first_result_vector_score = (
+            results[0].score
+            if results
+            else 0.0
+        )
 
-        refused = False
+        max_vector_score = max(
+            (
+                result.score
+                for result in results
+            ),
+            default=0.0,
+        )
+
+        rerank_scores = [
+            (
+                round(result.rerank_score, 4)
+                if result.rerank_score is not None
+                else None
+            )
+            for result in results
+        ]
+
         decision = evidence_policy.evaluate(results)
         accepted = decision.allowed
         refused = not accepted
@@ -105,20 +148,12 @@ def run_evaluation(
                 "id": case_id,
                 "category": case["category"],
                 "retrieved_sources": sources,
-                "retrieved_chunk_ids": [
-                    result.chunk.id
-                    for result in results
-                ],
-                "retrieved_paragraph_spans": [
-                    {
-                        "source": result.chunk.source,
-                        "start": result.chunk.paragraph_start,
-                        "end": result.chunk.paragraph_end,
-                    }
-                    for result in results
-                ],
-                "top_score": round(top_score, 4),
-                "second_score": round(second_score, 4),
+                "retrieved_chunk_ids": chunk_ids,
+                "retrieved_paragraph_spans": paragraph_spans,
+                "first_result_vector_score": round(
+                    first_result_vector_score,
+                    4,
+                ),
                 "evidence_allowed": accepted,
                 "keyword_coverage": round(keywords_coverage, 4),
                 "refused": refused,
@@ -127,6 +162,8 @@ def run_evaluation(
                     round(result.score, 4)
                     for result in results
                 ],
+                "rerank_scores": rerank_scores,
+                "retrieval_ms": round(retrieval_ms, 2),
             }
         )
 
@@ -138,8 +175,16 @@ def run_evaluation(
         keyword_coverages=keyword_coverages,
     )
 
+    summary_data = asdict(summary)
+    summary_data["average_retrieval_ms"] = (
+        sum(retrieval_times_ms)
+        / len(retrieval_times_ms)
+        if retrieval_times_ms
+        else 0.0
+    )
+
     return {
-        "summary": asdict(summary),
+        "summary": summary_data,
         "details": details,
     }
 

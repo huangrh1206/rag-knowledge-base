@@ -3,13 +3,14 @@ from types import SimpleNamespace
 import pytest
 import numpy as np
 
-from src.cli import _retriever, build_parser, print_answer
+from src.cli import build_parser, print_answer
 from src.config import Settings
 from src.models import Answer, Citation
 from src.vector_store import VectorStore
 from src.rag_service import IndexReport
 from src.index_manifest import IndexManifest, write_manifest
-
+from src.reranker import DisabledReranker
+from src.retriever_factory import create_dense_retriever
 from pathlib import Path
 
 from src.cli import configure_logging
@@ -36,7 +37,7 @@ def test_print_answer_includes_citation(capsys) -> None:
     assert "[1] guide.docx, paragraphs 2-3" in output
 
 
-def test_retriever_uses_settings_top_k_and_threshold(
+def test_dense_retriever_uses_similarity_threshold(
     tmp_path: Path,
 ) -> None:
     index_dir = tmp_path / "index"
@@ -67,9 +68,8 @@ def test_retriever_uses_settings_top_k_and_threshold(
     )
     client = SimpleNamespace(embeddings=object())
 
-    retriever = _retriever(client, settings)
+    retriever = create_dense_retriever(client, settings)
 
-    assert retriever._top_k == 7
     assert retriever._threshold == 0.42
     assert retriever._embedder._api is client.embeddings
 

@@ -12,6 +12,8 @@ from src.index_manifest import (
     load_manifest,
     qdrant_manifest_directory,
 )
+from src.retriever import Retriever
+from src.hybrid_retriever import HybridRetriever
 
 class FakeRetriever:
     def search(self, question: str) -> list[SearchResult]:
@@ -430,3 +432,137 @@ def test_service_logs_retrieval_failure(caplog) -> None:
         "retrieval failed" in record.getMessage()
         for record in caplog.records
     )
+
+class ThreeChunkStore:
+    def search(
+        self,
+        query: np.ndarray,
+        top_k: int,
+    ) -> list[SearchResult]:
+        return [
+            SearchResult(
+                Chunk(
+                    id="chunk-a",
+                    text="vector result A",
+                    source="a.docx",
+                    paragraph_start=1,
+                    paragraph_end=2,
+                ),
+                0.95,
+            ),
+            SearchResult(
+                Chunk(
+                    id="chunk-b",
+                    text="vector result B",
+                    source="b.docx",
+                    paragraph_start=3,
+                    paragraph_end=4,
+                ),
+                0.90,
+            ),
+            SearchResult(
+                Chunk(
+                    id="chunk-c",
+                    text="vector result C",
+                    source="c.docx",
+                    paragraph_start=5,
+                    paragraph_end=6,
+                ),
+                0.85,
+            ),
+        ]
+
+class ReverseThreeReranker:
+    def rerank(
+        self,
+        question: str,
+        results: list[SearchResult],
+    ) -> list[SearchResult]:
+        return list(reversed(results))
+
+
+class FirstAndThirdCitationGenerator:
+    def generate(
+        self,
+        question: str,
+        results: list[SearchResult],
+    ) -> str:
+        assert [
+            result.chunk.id
+            for result in results
+        ] == [
+            "chunk-c",
+            "chunk-b",
+            "chunk-a",
+        ]
+
+        return "Use the first and third reranked evidence [1] [3]"
+
+class FakeQueryEmbedder:
+    def embed_query(
+        self,
+        text: str,
+    ) -> np.ndarray:
+        return np.array(
+            [1.0, 0.0],
+            dtype=np.float32,
+        )
+
+class EmptyBM25Retriever:
+    def search(
+        self,
+        question: str,
+        top_k: int,
+    ) -> list[SearchResult]:
+        return []
+
+def test_reranked_results_keep_correct_citation_mapping() -> None:
+    dense_retriever = Retriever(
+        embedder=FakeQueryEmbedder(),
+        store=ThreeChunkStore(),
+        threshold=0.30,
+    )
+
+    retriever = HybridRetriever(
+        dense_retriever=dense_retriever,
+        bm25_retriever=EmptyBM25Retriever(),
+        candidate_k=3,
+        top_k=3,
+        reranker=ReverseThreeReranker(),
+        dense_weight=1.0,
+        bm25_weight=0.0,
+    )
+
+    service = RAGService(
+        retriever=retriever,
+        generator=FirstAndThirdCitationGenerator(),
+    )
+
+    answer = service.ask("test reranked citations")
+
+    assert [
+        result.chunk.id
+        for result in answer.retrieved_chunks
+    ] == [
+        "chunk-c",
+        "chunk-b",
+        "chunk-a",
+    ]
+
+    assert [
+        citation.number
+        for citation in answer.citations
+    ] == [1, 3]
+
+    assert [
+        citation.source
+        for citation in answer.citations
+    ] == [
+        "c.docx",
+        "a.docx",
+    ]
+
+    assert answer.citations[0].paragraph_start == 5
+    assert answer.citations[0].paragraph_end == 6
+    assert answer.citations[1].paragraph_start == 1
+    assert answer.citations[1].paragraph_end == 2

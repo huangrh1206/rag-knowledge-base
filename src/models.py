@@ -33,6 +33,7 @@ class Chunk:
 class SearchResult:
     chunk: Chunk
     score: float
+    rerank_score: float | None = None
 
 @dataclass(frozen=True)
 class Citation:

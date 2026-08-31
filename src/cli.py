@@ -11,12 +11,14 @@ from openai import OpenAI
 from src.api_client import create_openai_client
 from src.config import Settings
 from src.embeddings import EmbeddingClient
-from src.retriever import Retriever
 from src.agent import KnowledgeAgent
 from src.generator import AnswerGenerator
 from src.rag_service import RAGService, build_index, build_qdrant_index
 from src.evidence_policy import EvidencePolicy
-from src.store_factory import load_search_store
+from src.bm25_retriever import BM25Retriever
+from src.hybrid_retriever import HybridRetriever
+from src.bm25_factory import load_bm25_results
+from src.retriever_factory import create_retriever
 
 def configure_logging() -> None:
     log_dir = Path("log")
@@ -98,18 +100,6 @@ def _embedder(
         batch_size=settings.embedding_batch_size,
     )
 
-def _retriever(
-    client: OpenAI,
-    settings: Settings,
-) -> Retriever:
-    store = load_search_store(settings)
-
-    return Retriever(
-        embedder=_embedder(client, settings),
-        store=store,
-        top_k=settings.top_k,
-        threshold=settings.similarity_threshold,
-    )
 
 def main() -> int:
     configure_logging()
@@ -159,7 +149,10 @@ def main() -> int:
 
             return 0
 
-        retriever = _retriever(client, settings)
+        retriever = create_retriever(
+            client=client,
+            settings=settings,
+        )
 
         if args.command == "ask":
             generator = AnswerGenerator(
