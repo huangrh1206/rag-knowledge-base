@@ -8,11 +8,11 @@ from typing import Protocol
 from openai import OpenAI
 
 from evaluation.metrics import evaluate_retrieval
-from src.models import SearchResult
-from src.api_client import create_openai_client
+from src.rag.models import SearchResult
+from src.infrastructure.openai_client import create_openai_client
 from src.config import Settings
-from src.evidence_policy import EvidencePolicy
-from src.retriever_factory import create_retriever
+from src.rag.evidence_policy import EvidencePolicy
+from src.retrieval.factory import create_retriever
 
 class EvaluationRetriever(Protocol):
     def search(

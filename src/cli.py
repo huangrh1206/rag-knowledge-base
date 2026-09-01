@@ -4,21 +4,18 @@ import argparse
 import logging
 from pathlib import Path
 
-from src.models import Answer
+from src.rag.models import Answer
 
 from openai import OpenAI
 
-from src.api_client import create_openai_client
+from src.infrastructure.openai_client import create_openai_client
 from src.config import Settings
-from src.embeddings import EmbeddingClient
+from src.infrastructure.embeddings import EmbeddingClient
 from src.agent import KnowledgeAgent
-from src.generator import AnswerGenerator
-from src.rag_service import RAGService, build_index, build_qdrant_index
-from src.evidence_policy import EvidencePolicy
-from src.bm25_retriever import BM25Retriever
-from src.hybrid_retriever import HybridRetriever
-from src.bm25_factory import load_bm25_results
-from src.retriever_factory import create_retriever
+from src.rag.generator import AnswerGenerator
+from src.rag.service import RAGService, build_index, build_qdrant_index
+from src.rag.evidence_policy import EvidencePolicy
+from src.retrieval.factory import create_retriever
 
 def configure_logging() -> None:
     log_dir = Path("log")

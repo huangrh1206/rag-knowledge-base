@@ -155,6 +155,23 @@ Qdrant + hybrid disabled      dense retrieval
 Qdrant + hybrid enabled       dense + BM25 -> RRF -> rerank
 ```
 
+## Source Package Layout
+
+```text
+src/
+  agent/          agent runtime, model gateway, limits, and result types
+  rag/            RAG service, domain models, ingestion, and generation
+  retrieval/      dense/BM25 retrieval, RRF fusion, and reranking
+  persistence/    NumPy/Qdrant stores and index manifests
+  infrastructure/ external API and embedding adapters
+  config.py       application configuration
+  cli.py          command-line composition root
+```
+
+Dependencies point inward through explicit interfaces. Agent code uses retrieval contracts, retrieval uses persistence contracts, and the CLI constructs concrete implementations.
+
+Tests mirror these responsibilities under `tests/agent`, `tests/rag`, `tests/retrieval`, `tests/persistence`, and `tests/infrastructure`. CLI/configuration tests live in `tests/application`, while offline evaluation tests live in `tests/evaluation`.
+
 Qdrant 混合模式会通过分页 `scroll` 读取 payload 中的全部 chunk，并在进程内建立 BM25 索引，因此当前不需要维护第二份 `chunks.json` 或接入 Elasticsearch。
 
 索引构建目前采用全量重建策略：不会向已有 NumPy 或 Qdrant 索引增量追加，也不会自动去重。文档内容或分块参数发生变化后，请重新执行索引命令。
