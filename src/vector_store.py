@@ -36,6 +36,9 @@ class VectorStore:
     def vector_dimension(self) -> int:
         return self.embeddings.shape[1]
 
+    def all_chunks(self) -> list[Chunk]:
+        return list(self.chunks)
+
     def search(
         self,
         query: np.ndarray,

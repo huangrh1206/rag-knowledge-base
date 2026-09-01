@@ -56,6 +56,27 @@ def test_qdrant_store_returns_highest_score_first() -> None:
     assert store.vector_dimension == 2
 
 
+def test_qdrant_store_returns_all_chunks_for_lexical_retrieval() -> None:
+    client = QdrantClient(location=":memory:")
+    store = QdrantVectorStore.create(
+        client=client,
+        collection_name="test_chunks",
+        chunks=chunks(),
+        embeddings=np.eye(2, dtype=np.float32),
+    )
+
+    loaded_chunks = store.all_chunks()
+
+    assert {chunk.id for chunk in loaded_chunks} == {
+        "guide-0000",
+        "guide-0001",
+    }
+    assert {chunk.text for chunk in loaded_chunks} == {
+        "FastAPI",
+        "Docker",
+    }
+
+
 def test_qdrant_store_rejects_count_mismatch() -> None:
     client = QdrantClient(location=":memory:")
 

@@ -26,6 +26,31 @@ class QdrantVectorStore:
     def vector_dimension(self) -> int:
         return self._vector_size
 
+    def all_chunks(self) -> list[Chunk]:
+        chunks: list[Chunk] = []
+        offset = None
+
+        while True:
+            # scroll：遍历、分页导出集合里的 point，可以加 payload 过滤，
+            # 不做向量相似度计算，默认按 Point ID 升序返回
+            records, offset = self._client.scroll(
+                collection_name=self._collection_name,
+                limit=256,
+                offset=offset,
+                with_payload=True,
+                with_vectors=False,
+            )
+
+            for record in records:
+                if record.payload is None:
+                    raise ValueError(
+                        "Qdrant point is missing chunk payload"
+                    )
+                chunks.append(Chunk.from_dict(record.payload))
+
+            if offset is None:
+                return chunks
+
 
     @classmethod
     def create(

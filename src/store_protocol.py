@@ -2,12 +2,17 @@ from typing import Protocol
 
 import numpy as np
 
-from src.models import SearchResult
+from src.models import Chunk, SearchResult
 
 class SearchStore(Protocol):
     @property
-    def vectory_dimension(self) -> int:
+    def vector_dimension(self) -> int:
         ...
+
+    def all_chunks(self) -> list[Chunk]:
+        """Return all indexed chunks for lexical retrieval."""
+        ...
+
     # src\vector_store.py
     # src\qdrant_vector_store.py
     def search(

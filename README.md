@@ -87,6 +87,25 @@ RAG_QDRANT_PATH=storage/qdrant
 RAG_QDRANT_COLLECTION=rag_chunks
 ```
 
+Qdrant 混合检索与精排配置：
+
+```env
+RAG_VECTOR_STORE_BACKEND=qdrant
+RAG_HYBRID_ENABLED=true
+RAG_RERANK_ENABLED=true
+RAG_RETRIEVAL_CANDIDATE_K=20
+RAG_TOP_K=5
+RAG_DENSE_WEIGHT=1.0
+RAG_BM25_WEIGHT=1.0
+RAG_RRF_K=60
+RAG_RERANKER_MODEL=BAAI/bge-reranker-v2-m3
+```
+
+该模式执行 `Qdrant 向量粗排 + BM25 粗排 -> RRF 融合 -> CrossEncoder 精排 -> Top-K`。
+BM25 启动时通过 Qdrant `scroll` 分页读取 collection 中的 chunk payload 并在本地建索引，
+因此无需额外维护 `chunks.json` 或进行双写。当前实现适合中小规模知识库；数据量较大或需要多实例服务时，
+再将关键词检索替换为 Elasticsearch 等独立倒排索引服务。
+
 然后重新建立索引：
 
 ```powershell
@@ -125,3 +144,17 @@ PROJECT_FRAMEWORK.md    面试复盘和项目框架书
 - NumPy 是全量扫描，适合学习和小规模知识库；更大规模应使用向量数据库。
 - 当前 Agent 主要支持 `search_knowledge_base` 一个工具。
 - 相似度分数只能反映语义相近程度，不能单独证明答案正确，因此系统同时使用 evidence policy、引用校验和离线评估。
+- Qdrant 检索支持 payload 中的 chunk 元数据读取，可与 BM25、RRF 和 CrossEncoder 精排组成完整混合检索链路。
+
+## Final Retrieval Modes
+
+```text
+NumPy + hybrid disabled       dense retrieval
+NumPy + hybrid enabled        dense + BM25 -> RRF -> rerank
+Qdrant + hybrid disabled      dense retrieval
+Qdrant + hybrid enabled       dense + BM25 -> RRF -> rerank
+```
+
+Qdrant 混合模式会通过分页 `scroll` 读取 payload 中的全部 chunk，并在进程内建立 BM25 索引，因此当前不需要维护第二份 `chunks.json` 或接入 Elasticsearch。
+
+索引构建目前采用全量重建策略：不会向已有 NumPy 或 Qdrant 索引增量追加，也不会自动去重。文档内容或分块参数发生变化后，请重新执行索引命令。
