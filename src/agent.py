@@ -1,5 +1,19 @@
 import json
+import time
 from typing import Any
+
+from src.agent_types import (
+    AgentEmptyResponseError,
+    AgentLimitError,
+    AgentResult,
+    AgentRunConfig,
+    AgentStopReason,
+    AgentValidationError,
+)
+from src.model_gateway import (
+    AgentModelGateway,
+    ChatCompletionsGateway,
+)
 from src.retriever import Retriever, format_evidence
 
 TOOLS = [
@@ -43,12 +57,28 @@ class KnowledgeAgent:
         api: Any,
         model: str,
         retriever: Retriever,
-        max_rounds: int = 3,
+        max_rounds: int | None = None,
+        *,
+        run_config: AgentRunConfig | None = None,
+        gateway: AgentModelGateway | None = None,
     ) -> None:
-        self._api = api
-        self._model = model
+        if max_rounds is not None and run_config is not None:
+            raise AgentValidationError(
+                "max_rounds and run_config cannot both be provided"
+            )
+
+        self._gateway = gateway or ChatCompletionsGateway(
+            api,
+            model,
+        )
         self._retriever = retriever
-        self._max_rounds = max_rounds
+        self._run_config = run_config or AgentRunConfig(
+            max_rounds=(
+                max_rounds
+                if max_rounds is not None
+                else 3
+            ),
+        )
 
     def _tool_result(self, arguments: str) -> str:
         try:
@@ -78,6 +108,14 @@ class KnowledgeAgent:
             )
 
     def run(self, question: str) -> str:
+        return self.run_result(question).answer
+
+    def run_result(self, question: str) -> AgentResult:
+        if not isinstance(question, str) or not question.strip():
+            raise AgentValidationError(
+                "question must be a non-empty string"
+            )
+
         messages: list[dict[str, object]] = [
             {
                 "role": "system",
@@ -88,21 +126,25 @@ class KnowledgeAgent:
                 "content": question,
             },
         ]
+        started = time.monotonic()
+        tool_call_count = 0
 
-        for _ in range(self._max_rounds):
-            response = self._api.create(
-                model=self._model,
+        for round_number in range(
+            1,
+            self._run_config.max_rounds + 1,
+        ):
+            self._check_elapsed(started)
+            response = self._gateway.complete(
                 messages=messages,
                 tools=TOOLS,
-                temperature=0,
             )
+            self._check_elapsed(started)
 
-            message = response.choices[0].message
-            tool_calls = message.tool_calls or []
+            tool_calls = response.tool_calls
 
             assistant_message: dict[str, object] = {
                 "role": "assistant",
-                "content": message.content or "",
+                "content": response.content or "",
             }
 
             if tool_calls:
@@ -111,8 +153,8 @@ class KnowledgeAgent:
                         "id": call.id,
                         "type": "function",
                         "function": {
-                            "name": call.function.name,
-                            "arguments": call.function.arguments,
+                            "name": call.name,
+                            "arguments": call.arguments,
                         },
                     }
                     for call in tool_calls
@@ -121,16 +163,27 @@ class KnowledgeAgent:
             messages.append(assistant_message)
 
             if not tool_calls:
-                if not message.content:
-                    raise ValueError(
+                if not response.content or not response.content.strip():
+                    raise AgentEmptyResponseError(
                         "agent returned empty content"
                     )
-                return message.content.strip()
+                return AgentResult(
+                    answer=response.content.strip(),
+                    rounds=round_number,
+                    tool_calls=tool_call_count,
+                    stop_reason=AgentStopReason.COMPLETED,
+                )
+
+            tool_call_count += len(tool_calls)
+            if tool_call_count > self._run_config.max_tool_calls:
+                raise AgentLimitError(
+                    "agent exceeded maximum tool calls"
+                )
 
             for call in tool_calls:
-                if call.function.name == "search_knowledge_base":
+                if call.name == "search_knowledge_base":
                     content = self._tool_result(
-                        call.function.arguments
+                        call.arguments
                     )
                 else:
                     content = json.dumps(
@@ -145,9 +198,16 @@ class KnowledgeAgent:
                         "content": content,
                     }
                 )
-        raise RuntimeError(
+        raise AgentLimitError(
             "agent exceeded maximum rounds"
         )
+
+    def _check_elapsed(self, started: float) -> None:
+        elapsed = time.monotonic() - started
+        if elapsed > self._run_config.max_elapsed_seconds:
+            raise AgentLimitError(
+                "agent exceeded maximum elapsed time"
+            )
 
 
 
