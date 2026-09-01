@@ -99,6 +99,14 @@ def run_evaluation(
             for result in results
         ]
 
+        dense_trace = getattr(retriever, "last_dense_chunk_ids", None)
+        dense_chunk_ids = list(
+            chunk_ids if dense_trace is None else dense_trace
+        )
+        bm25_chunk_ids = list(
+            getattr(retriever, "last_bm25_chunk_ids", [])
+        )
+
         paragraph_spans = [
             {
                 "source": result.chunk.source,
@@ -149,6 +157,8 @@ def run_evaluation(
                 "category": case["category"],
                 "retrieved_sources": sources,
                 "retrieved_chunk_ids": chunk_ids,
+                "dense_chunk_ids": dense_chunk_ids,
+                "bm25_chunk_ids": bm25_chunk_ids,
                 "retrieved_paragraph_spans": paragraph_spans,
                 "first_result_vector_score": round(
                     first_result_vector_score,

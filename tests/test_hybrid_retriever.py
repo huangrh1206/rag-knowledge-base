@@ -97,6 +97,8 @@ def test_hybrid_retriever_calls_both_retrievers_with_candidate_k():
 
     assert dense.requested_limit == 5
     assert bm25.requested_top_k == 5
+    assert retriever.last_dense_chunk_ids == ["dense-a", "dense-b"]
+    assert retriever.last_bm25_chunk_ids == ["bm25-a", "bm25-b"]
 
 
 def test_hybrid_retriever_returns_final_top_k():

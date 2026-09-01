@@ -60,6 +60,16 @@ class HybridRetriever:
         self._dense_weight = dense_weight
         self._bm25_weight = bm25_weight
         self._rank_constant = rank_constant
+        self._last_dense_chunk_ids: list[str] = []
+        self._last_bm25_chunk_ids: list[str] = []
+
+    @property
+    def last_dense_chunk_ids(self) -> list[str]:
+        return list(self._last_dense_chunk_ids)
+
+    @property
+    def last_bm25_chunk_ids(self) -> list[str]:
+        return list(self._last_bm25_chunk_ids)
 
     def search(
         self,
@@ -79,6 +89,15 @@ class HybridRetriever:
                 question=question,
                 top_k=self._candidate_k,
             )
+
+        self._last_dense_chunk_ids = [
+            result.chunk.id
+            for result in dense_results
+        ]
+        self._last_bm25_chunk_ids = [
+            result.chunk.id
+            for result in bm25_results
+        ]
 
         ranked_lists: list[list[SearchResult]] = []
         weights: list[float] = []
