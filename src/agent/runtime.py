@@ -1,7 +1,12 @@
-import json
 import time
 from typing import Any
 
+from src.agent.model_gateway import (
+    AgentModelGateway,
+    ChatCompletionsGateway,
+)
+from src.agent.tools import RAGSearchTool, ToolRegistry
+from src.agent.executor import ToolExecutor
 from src.agent.types import (
     AgentEmptyResponseError,
     AgentLimitError,
@@ -10,45 +15,12 @@ from src.agent.types import (
     AgentStopReason,
     AgentValidationError,
 )
-from src.agent.model_gateway import (
-    AgentModelGateway,
-    ChatCompletionsGateway,
+
+AGENT_PROMPT = (
+    "You are a technical knowledge-base agent. "
+    "Use the knowledge search tool for document-grounded questions "
+    "and cite its evidence."
 )
-from src.retrieval.dense import Retriever, format_evidence
-
-TOOLS = [
-    {
-        "type": "function",
-        "function": {
-            "name": "search_knowledge_base",
-            "description": (
-                "Search technical Word documents before answering "
-                "document-grounded questions."
-            ),
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "query": {
-                        "type": "string",
-                    },
-                    "top_k": {
-                        "type": "integer",
-                        "minimum": 1,
-                        "maximum": 10,
-                    },
-                },
-                "required": ["query"],
-                "additionalProperties": False,
-            },
-        },
-    }
-]
-
-AGENT_PROMPT = """你是技术知识库 Agent。
-寒暄和对话控制可以直接回答。
-凡是涉及技术文档事实的问题，必须先调用 search_knowledge_base。
-最终答案只能使用工具返回的资料，并保留资料编号引用；
-资料不足时明确说明。"""
 
 
 class KnowledgeAgent:
@@ -56,56 +28,31 @@ class KnowledgeAgent:
         self,
         api: Any,
         model: str,
-        retriever: Retriever,
+        retriever: Any,
         max_rounds: int | None = None,
         *,
         run_config: AgentRunConfig | None = None,
         gateway: AgentModelGateway | None = None,
+        registry: ToolRegistry | None = None,
     ) -> None:
         if max_rounds is not None and run_config is not None:
             raise AgentValidationError(
                 "max_rounds and run_config cannot both be provided"
             )
 
-        self._gateway = gateway or ChatCompletionsGateway(
-            api,
-            model,
-        )
+        self._gateway = gateway or ChatCompletionsGateway(api, model)
         self._retriever = retriever
+        self._registry = registry or ToolRegistry(
+            [RAGSearchTool(retriever)]
+        )
+        self._executor = ToolExecutor(self._registry)
         self._run_config = run_config or AgentRunConfig(
             max_rounds=(
                 max_rounds
                 if max_rounds is not None
                 else 3
-            ),
+            )
         )
-
-    def _tool_result(self, arguments: str) -> str:
-        try:
-            value = json.loads(arguments)
-
-            query = value["query"]
-            if not isinstance(query, str) or not query.strip():
-                raise ValueError(
-                    "query must be a non-empty string"
-                )
-
-            results = self._retriever.search(query)
-
-            return (
-                format_evidence(results)
-                or "知识库中没有足够信息。"
-            )
-        except (
-            json.JSONDecodeError,
-            KeyError,
-            TypeError,
-            ValueError,
-        ) as exc:
-            return json.dumps(
-                {"error": str(exc)},
-                ensure_ascii = False,
-            )
 
     def run(self, question: str) -> str:
         return self.run_result(question).answer
@@ -136,17 +83,15 @@ class KnowledgeAgent:
             self._check_elapsed(started)
             response = self._gateway.complete(
                 messages=messages,
-                tools=TOOLS,
+                tools=self._registry.definitions(),
             )
             self._check_elapsed(started)
 
             tool_calls = response.tool_calls
-
             assistant_message: dict[str, object] = {
                 "role": "assistant",
                 "content": response.content or "",
             }
-
             if tool_calls:
                 assistant_message["tool_calls"] = [
                     {
@@ -159,7 +104,6 @@ class KnowledgeAgent:
                     }
                     for call in tool_calls
                 ]
-
             messages.append(assistant_message)
 
             if not tool_calls:
@@ -181,33 +125,24 @@ class KnowledgeAgent:
                 )
 
             for call in tool_calls:
-                if call.name == "search_knowledge_base":
-                    content = self._tool_result(
-                        call.arguments
-                    )
-                else:
-                    content = json.dumps(
-                        {"error": "unknown tool"},
-                        ensure_ascii=False,
-                    )
-
                 messages.append(
                     {
                         "role": "tool",
                         "tool_call_id": call.id,
-                        "content": content,
+                        "content": self._executor.invoke(
+                            call.name,
+                            call.arguments,
+                            call_id=call.id,
+                        ),
                     }
                 )
+
         raise AgentLimitError(
             "agent exceeded maximum rounds"
         )
 
     def _check_elapsed(self, started: float) -> None:
-        elapsed = time.monotonic() - started
-        if elapsed > self._run_config.max_elapsed_seconds:
+        if time.monotonic() - started > self._run_config.max_elapsed_seconds:
             raise AgentLimitError(
                 "agent exceeded maximum elapsed time"
             )
-
-
-

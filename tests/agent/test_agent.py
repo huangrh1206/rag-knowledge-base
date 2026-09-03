@@ -11,6 +11,7 @@ from src.agent.types import (
     AgentValidationError,
 )
 from src.rag.models import Chunk, SearchResult
+from src.agent.tools import RAGSearchTool, ToolRegistry
 
 
 def tool_call(
@@ -186,3 +187,11 @@ def test_agent_rejects_non_positive_legacy_max_rounds() -> None:
             FakeRetriever(),
             max_rounds=0,
         )
+
+
+def test_agent_uses_injected_tool_registry() -> None:
+    first = SimpleNamespace(content=None, tool_calls=[tool_call()])
+    second = SimpleNamespace(content="answer", tool_calls=None)
+    retriever = FakeRetriever()
+    agent = KnowledgeAgent(FakeCompletions([first, second]), "chat-model", retriever, registry=ToolRegistry([RAGSearchTool(retriever)]))
+    assert agent.run("Question") == "answer"
