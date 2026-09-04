@@ -27,7 +27,7 @@ class ToolExecutionPolicy:
             )
 
 
-ApprovalCallback = Callable[[str, str], bool]
+ApprovalCallback = Callable[[str, str], bool] # 回调函数必须接收2个str，返回bool
 
 
 class ToolExecutionError(RuntimeError):

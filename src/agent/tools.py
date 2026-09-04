@@ -85,6 +85,7 @@ class ToolRegistry:
             self.register(tool)
 
     def register(self, tool: AgentTool) -> None:
+        """检测非空名称和重复注册，然后注册工具"""
         if not tool.name.strip():
             raise ValueError("tool name cannot be empty")
         if tool.name in self._tools:

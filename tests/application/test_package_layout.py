@@ -23,6 +23,7 @@ def test_source_is_grouped_into_responsibility_packages() -> None:
     expected_packages = {
         "agent",
         "infrastructure",
+        "mcp",
         "persistence",
         "rag",
         "retrieval",
@@ -50,6 +51,7 @@ def test_tests_are_grouped_by_source_responsibility() -> None:
         "application",
         "evaluation",
         "infrastructure",
+        "mcp",
         "persistence",
         "rag",
         "retrieval",
