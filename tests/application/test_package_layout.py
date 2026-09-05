@@ -50,6 +50,7 @@ def test_tests_are_grouped_by_source_responsibility() -> None:
         "agent",
         "application",
         "evaluation",
+        "harness",
         "infrastructure",
         "mcp",
         "persistence",
