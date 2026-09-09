@@ -10,6 +10,7 @@ from src.harness.models import (
 from src.harness.policy import HarnessPolicy
 from src.harness.runtime import HarnessRuntime
 from src.harness.session import SessionStore
+from src.harness.steps import FunctionStep, ToolStep
 
 __all__ = [
     "HarnessCheckpoint",
@@ -19,5 +20,7 @@ __all__ = [
     "HarnessResult",
     "HarnessRuntime",
     "HarnessSession",
+    "FunctionStep",
     "SessionStore",
+    "ToolStep",
 ]
