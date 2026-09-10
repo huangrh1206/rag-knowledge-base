@@ -11,6 +11,7 @@ from src.harness.models import (
 )
 from src.harness.policy import HarnessPolicy
 from src.harness.session import SessionStore
+from src.harness.tracing import HarnessEventRecorder
 
 Step = Callable[[dict[str, Any]], dict[str, Any]]
 
@@ -24,6 +25,9 @@ class HarnessRuntime:
         self.sessions = sessions or SessionStore()
         self.checkpoints = CheckpointStore(self.sessions)
         self.policy = policy or HarnessPolicy()
+
+    def recorder(self, run_id: str) -> HarnessEventRecorder:
+        return HarnessEventRecorder(self.sessions, run_id)
 
     def run(
         self,

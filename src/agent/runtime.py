@@ -1,5 +1,5 @@
 import time
-from typing import Any
+from typing import Any, Callable
 
 from src.agent.model_gateway import (
     AgentModelGateway,
@@ -34,6 +34,7 @@ class KnowledgeAgent:
         run_config: AgentRunConfig | None = None,
         gateway: AgentModelGateway | None = None,
         registry: ToolRegistry | None = None,
+        event_callback: Callable[[str, dict[str, Any]], None] | None = None,
     ) -> None:
         if max_rounds is not None and run_config is not None:
             raise AgentValidationError(
@@ -45,7 +46,11 @@ class KnowledgeAgent:
         self._registry = registry or ToolRegistry(
             [RAGSearchTool(retriever)]
         )
-        self._executor = ToolExecutor(self._registry)
+        self._event_callback = event_callback
+        self._executor = ToolExecutor(
+            self._registry,
+            event_callback=event_callback,
+        )
         self._run_config = run_config or AgentRunConfig(
             max_rounds=(
                 max_rounds
@@ -81,11 +86,27 @@ class KnowledgeAgent:
             self._run_config.max_rounds + 1,
         ):
             self._check_elapsed(started)
+            self._emit(
+                "model_requested",
+                {
+                    "round": round_number,
+                    "message_count": len(messages),
+                    "tool_count": len(self._registry.definitions()),
+                },
+            )
             response = self._gateway.complete(
                 messages=messages,
                 tools=self._registry.definitions(),
             )
             self._check_elapsed(started)
+            self._emit(
+                "model_completed",
+                {
+                    "round": round_number,
+                    "content": response.content,
+                    "tool_call_count": len(response.tool_calls),
+                },
+            )
 
             tool_calls = response.tool_calls
             assistant_message: dict[str, object] = {
@@ -140,6 +161,10 @@ class KnowledgeAgent:
         raise AgentLimitError(
             "agent exceeded maximum rounds"
         )
+
+    def _emit(self, event_type: str, payload: dict[str, Any]) -> None:
+        if self._event_callback is not None:
+            self._event_callback(event_type, payload)
 
     def _check_elapsed(self, started: float) -> None:
         if time.monotonic() - started > self._run_config.max_elapsed_seconds:

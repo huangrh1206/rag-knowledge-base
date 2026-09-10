@@ -10,16 +10,19 @@ from src.harness.models import (
 from src.harness.policy import HarnessPolicy
 from src.harness.runtime import HarnessRuntime
 from src.harness.session import SessionStore
-from src.harness.steps import FunctionStep, ToolStep
+from src.harness.steps import AgentStep, FunctionStep, ToolStep
+from src.harness.tracing import HarnessEventRecorder
 
 __all__ = [
     "HarnessCheckpoint",
     "HarnessContextBuilder",
     "HarnessEvent",
+    "HarnessEventRecorder",
     "HarnessPolicy",
     "HarnessResult",
     "HarnessRuntime",
     "HarnessSession",
+    "AgentStep",
     "FunctionStep",
     "SessionStore",
     "ToolStep",

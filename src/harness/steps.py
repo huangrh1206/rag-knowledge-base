@@ -2,13 +2,18 @@
 
 import json
 from collections.abc import Callable
-from typing import Any
+from typing import Any, Protocol
 
 from src.agent.executor import ToolExecutor
 
 State = dict[str, Any]
 ArgumentsBuilder = Callable[[State], dict[str, Any]]
 StepHandler = Callable[[State], State]
+
+
+class AgentRunner(Protocol):
+    def run_result(self, question: str) -> Any:
+        ...
 
 
 class FunctionStep:
@@ -53,4 +58,35 @@ class ToolStep:
             json.dumps(arguments, ensure_ascii=False),
         )
         next_state[self._result_key] = result
+        return next_state
+
+
+class AgentStep:
+    """Read a question from state and persist an Agent result."""
+
+    def __init__(
+        self,
+        agent: AgentRunner,
+        question_key: str = "question",
+        answer_key: str = "answer",
+    ) -> None:
+        self.name = "agent"
+        self._agent = agent
+        self._question_key = question_key
+        self._answer_key = answer_key
+
+    def __call__(self, state: State) -> State:
+        question = state.get(self._question_key)
+        if not isinstance(question, str) or not question.strip():
+            raise ValueError(
+                f"state must contain non-empty {self._question_key}"
+            )
+        result = self._agent.run_result(question)
+        next_state = dict(state)
+        next_state[self._answer_key] = result.answer
+        next_state["agent_result"] = {
+            "rounds": result.rounds,
+            "tool_calls": result.tool_calls,
+            "stop_reason": str(result.stop_reason),
+        }
         return next_state
