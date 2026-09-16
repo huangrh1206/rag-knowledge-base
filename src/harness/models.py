@@ -11,18 +11,19 @@ def utc_now() -> str:
 
 @dataclass(frozen=True)
 class HarnessEvent:
-    """多条事件拼在一起就是完整执行轨迹"""
+    """One immutable entry in a run's execution trace."""
+
     run_id: str
-    event_type: str # 事件类型
-    payload: dict[str, Any] = field(default_factory=dict) # 事件详细数据
+    event_type: str
+    payload: dict[str, Any] = field(default_factory=dict)
     created_at: str = field(default_factory=utc_now)
 
 
 @dataclass(frozen=True)
 class HarnessCheckpoint:
     run_id: str
-    next_step: int 
-    state: dict[str, Any] # 当前全部上下文快照（变量、内存、Agent记忆）
+    next_step: int
+    state: dict[str, Any]
     created_at: str = field(default_factory=utc_now)
 
 
@@ -30,7 +31,7 @@ class HarnessCheckpoint:
 class HarnessResult:
     run_id: str
     status: str
-    state: dict[str, Any] 
+    state: dict[str, Any]
     next_step: int
     events: tuple[HarnessEvent, ...]
 

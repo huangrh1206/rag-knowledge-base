@@ -1,11 +1,11 @@
 """Checkpoint access kept separate from event storage."""
 
 from src.harness.models import HarnessCheckpoint
-from src.harness.session import SessionStore
+from src.harness.store import HarnessSessionStore
 
 
 class CheckpointStore:
-    def __init__(self, sessions: SessionStore) -> None:
+    def __init__(self, sessions: HarnessSessionStore) -> None:
         self._sessions = sessions
 
     def save(self, checkpoint: HarnessCheckpoint) -> None:

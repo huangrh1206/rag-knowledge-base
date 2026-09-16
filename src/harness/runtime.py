@@ -11,6 +11,7 @@ from src.harness.models import (
 )
 from src.harness.policy import HarnessPolicy
 from src.harness.session import SessionStore
+from src.harness.store import HarnessSessionStore
 from src.harness.tracing import HarnessEventRecorder
 
 Step = Callable[[dict[str, Any]], dict[str, Any]]
@@ -19,7 +20,7 @@ Step = Callable[[dict[str, Any]], dict[str, Any]]
 class HarnessRuntime:
     def __init__(
         self,
-        sessions: SessionStore | None = None,
+        sessions: HarnessSessionStore | None = None,
         policy: HarnessPolicy | None = None,
     ) -> None:
         self.sessions = sessions or SessionStore()
@@ -108,10 +109,11 @@ class HarnessRuntime:
             run_id,
             HarnessEvent(run_id, "run_finished", {"status": status}),
         )
+        persisted_session = self.sessions.get(run_id)
         return HarnessResult(
             run_id,
             status,
             state,
             next_step,
-            tuple(session.events),
+            tuple(persisted_session.events),
         )

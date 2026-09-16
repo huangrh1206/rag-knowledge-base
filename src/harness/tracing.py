@@ -3,11 +3,11 @@
 from typing import Any
 
 from src.harness.models import HarnessEvent
-from src.harness.session import SessionStore
+from src.harness.store import HarnessSessionStore
 
 
 class HarnessEventRecorder:
-    def __init__(self, sessions: SessionStore, run_id: str) -> None:
+    def __init__(self, sessions: HarnessSessionStore, run_id: str) -> None:
         self._sessions = sessions
         self._run_id = run_id
 
