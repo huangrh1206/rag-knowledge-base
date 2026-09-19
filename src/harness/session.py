@@ -1,6 +1,6 @@
 """In-memory append-only session store."""
 
-from src.harness.models import HarnessCheckpoint, HarnessEvent, HarnessSession
+from src.harness.models import HarnessEvent, HarnessSession
 
 
 class SessionStore:
@@ -22,6 +22,3 @@ class SessionStore:
 
     def append(self, run_id: str, event: HarnessEvent) -> None:
         self.get(run_id).append(event)
-
-    def save_checkpoint(self, checkpoint: HarnessCheckpoint) -> None:
-        self.get(checkpoint.run_id).checkpoint = checkpoint

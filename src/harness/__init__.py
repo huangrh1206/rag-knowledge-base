@@ -1,8 +1,8 @@
 """Resumable Harness runtime primitives."""
 
 from src.harness.context import HarnessContextBuilder
+from src.harness.checkpointers import open_sqlite_checkpointer
 from src.harness.models import (
-    HarnessCheckpoint,
     HarnessEvent,
     HarnessResult,
     HarnessSession,
@@ -16,7 +16,6 @@ from src.harness.steps import AgentStep, FunctionStep, ToolStep
 from src.harness.tracing import HarnessEventRecorder
 
 __all__ = [
-    "HarnessCheckpoint",
     "HarnessContextBuilder",
     "HarnessEvent",
     "HarnessEventRecorder",
@@ -30,4 +29,5 @@ __all__ = [
     "SessionStore",
     "SQLiteSessionStore",
     "ToolStep",
+    "open_sqlite_checkpointer",
 ]

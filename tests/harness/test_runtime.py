@@ -15,6 +15,7 @@ def test_runtime_pauses_at_budget_and_resumes_from_checkpoint() -> None:
     resumed = HarnessRuntime(
         sessions=runtime.sessions,
         policy=HarnessPolicy(max_steps=5),
+        checkpointer=runtime.checkpointer,
     ).run("run-1", steps, resume=True)
 
     assert paused.status == "paused"

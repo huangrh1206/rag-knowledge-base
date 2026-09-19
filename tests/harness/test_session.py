@@ -1,19 +1,19 @@
 from src.harness import (
-    HarnessCheckpoint,
     HarnessContextBuilder,
     HarnessEvent,
     SessionStore,
 )
 
 
-def test_session_and_context_restore_checkpoint_state() -> None:
+def test_session_context_accepts_langgraph_state() -> None:
     sessions = SessionStore()
     session = sessions.create("run-1")
     sessions.append("run-1", HarnessEvent("run-1", "input"))
-    checkpoint = HarnessCheckpoint("run-1", 2, {"answer": "partial"})
-    sessions.save_checkpoint(checkpoint)
-
-    context = HarnessContextBuilder().build(session)
+    context = HarnessContextBuilder().build(
+        session,
+        state={"answer": "partial"},
+        next_step=2,
+    )
 
     assert context == {
         "run_id": "run-1",

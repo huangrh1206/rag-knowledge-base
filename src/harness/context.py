@@ -1,20 +1,20 @@
-"""Build bounded execution context from a session checkpoint."""
+"""Build a bounded view of a Harness session and graph state."""
 
 from typing import Any
 
-from src.harness.models import HarnessCheckpoint, HarnessSession
+from src.harness.models import HarnessSession
 
 
 class HarnessContextBuilder:
     def build(
         self,
         session: HarnessSession,
-        checkpoint: HarnessCheckpoint | None = None,
+        state: dict[str, Any] | None = None,
+        next_step: int = 0,
     ) -> dict[str, Any]:
-        active = checkpoint or session.checkpoint
         return {
             "run_id": session.run_id,
-            "next_step": active.next_step if active else 0,
-            "state": dict(active.state) if active else {},
+            "next_step": next_step,
+            "state": dict(state or {}),
             "event_count": len(session.events),
         }

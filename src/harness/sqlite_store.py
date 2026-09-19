@@ -1,10 +1,10 @@
-"""SQLite persistence for Harness sessions, events, and checkpoints."""
+"""SQLite persistence for Harness sessions and audit events."""
 
 import json
 from pathlib import Path
 import sqlite3
 
-from src.harness.models import HarnessCheckpoint, HarnessEvent, HarnessSession
+from src.harness.models import HarnessEvent, HarnessSession
 
 
 class SQLiteSessionStore:
@@ -53,7 +53,6 @@ class SQLiteSessionStore:
         return HarnessSession(
             run_id=run_id,
             events=events,
-            checkpoint=self._load_checkpoint(run_id),
         )
 
     def append(self, run_id: str, event: HarnessEvent) -> None:
@@ -78,50 +77,8 @@ class SQLiteSessionStore:
                 ),
             )
 
-    def save_checkpoint(self, checkpoint: HarnessCheckpoint) -> None:
-        self._require_session(checkpoint.run_id)
-        with self._connection:
-            self._connection.execute(
-                """
-                INSERT INTO harness_checkpoints (
-                    run_id,
-                    next_step,
-                    state,
-                    created_at
-                ) VALUES (?, ?, ?, ?)
-                ON CONFLICT(run_id) DO UPDATE SET
-                    next_step = excluded.next_step,
-                    state = excluded.state,
-                    created_at = excluded.created_at
-                """,
-                (
-                    checkpoint.run_id,
-                    checkpoint.next_step,
-                    json.dumps(checkpoint.state, ensure_ascii=False),
-                    checkpoint.created_at,
-                ),
-            )
-
     def close(self) -> None:
         self._connection.close()
-
-    def _load_checkpoint(self, run_id: str) -> HarnessCheckpoint | None:
-        row = self._connection.execute(
-            """
-            SELECT next_step, state, created_at
-            FROM harness_checkpoints
-            WHERE run_id = ?
-            """,
-            (run_id,),
-        ).fetchone()
-        if row is None:
-            return None
-        return HarnessCheckpoint(
-            run_id=run_id,
-            next_step=row["next_step"],
-            state=json.loads(row["state"]),
-            created_at=row["created_at"],
-        )
 
     def _require_session(self, run_id: str) -> None:
         row = self._connection.execute(
@@ -144,14 +101,6 @@ class SQLiteSessionStore:
                     run_id TEXT NOT NULL,
                     event_type TEXT NOT NULL,
                     payload TEXT NOT NULL,
-                    created_at TEXT NOT NULL,
-                    FOREIGN KEY(run_id) REFERENCES harness_sessions(run_id)
-                );
-
-                CREATE TABLE IF NOT EXISTS harness_checkpoints (
-                    run_id TEXT PRIMARY KEY,
-                    next_step INTEGER NOT NULL,
-                    state TEXT NOT NULL,
                     created_at TEXT NOT NULL,
                     FOREIGN KEY(run_id) REFERENCES harness_sessions(run_id)
                 );

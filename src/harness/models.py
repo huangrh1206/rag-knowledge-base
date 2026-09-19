@@ -20,14 +20,6 @@ class HarnessEvent:
 
 
 @dataclass(frozen=True)
-class HarnessCheckpoint:
-    run_id: str
-    next_step: int
-    state: dict[str, Any]
-    created_at: str = field(default_factory=utc_now)
-
-
-@dataclass(frozen=True)
 class HarnessResult:
     run_id: str
     status: str
@@ -40,7 +32,6 @@ class HarnessResult:
 class HarnessSession:
     run_id: str
     events: list[HarnessEvent] = field(default_factory=list)
-    checkpoint: HarnessCheckpoint | None = None
 
     def append(self, event: HarnessEvent) -> None:
         self.events.append(event)

@@ -2,7 +2,7 @@
 
 from typing import Protocol
 
-from src.harness.models import HarnessCheckpoint, HarnessEvent, HarnessSession
+from src.harness.models import HarnessEvent, HarnessSession
 
 
 class HarnessSessionStore(Protocol):
@@ -13,7 +13,4 @@ class HarnessSessionStore(Protocol):
         ...
 
     def append(self, run_id: str, event: HarnessEvent) -> None:
-        ...
-
-    def save_checkpoint(self, checkpoint: HarnessCheckpoint) -> None:
         ...
