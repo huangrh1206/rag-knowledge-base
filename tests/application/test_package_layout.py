@@ -22,11 +22,15 @@ def test_source_root_contains_only_composition_modules() -> None:
 def test_source_is_grouped_into_responsibility_packages() -> None:
     expected_packages = {
         "agent",
+        "authz",
+        "harness",
         "infrastructure",
         "mcp",
         "persistence",
         "rag",
         "retrieval",
+        "tools",
+        "workflow",
     }
     actual_packages = {
         path.name
@@ -49,6 +53,7 @@ def test_tests_are_grouped_by_source_responsibility() -> None:
     assert test_groups == {
         "agent",
         "application",
+        "authz",
         "evaluation",
         "harness",
         "infrastructure",
@@ -56,4 +61,6 @@ def test_tests_are_grouped_by_source_responsibility() -> None:
         "persistence",
         "rag",
         "retrieval",
+        "tools",
+        "workflow",
     }
