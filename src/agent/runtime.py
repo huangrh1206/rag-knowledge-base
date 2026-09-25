@@ -7,6 +7,7 @@ from src.agent.model_gateway import (
 )
 from src.agent.tools import RAGSearchTool, ToolRegistry
 from src.agent.executor import ToolExecutor
+from src.agent.safety import PromptInjectionGuard
 from src.agent.types import (
     AgentEmptyResponseError,
     AgentLimitError,
@@ -35,6 +36,7 @@ class KnowledgeAgent:
         gateway: AgentModelGateway | None = None,
         registry: ToolRegistry | None = None,
         event_callback: Callable[[str, dict[str, Any]], None] | None = None,
+        input_guard: PromptInjectionGuard | None = None,
     ) -> None:
         if max_rounds is not None and run_config is not None:
             raise AgentValidationError(
@@ -47,6 +49,7 @@ class KnowledgeAgent:
             [RAGSearchTool(retriever)]
         )
         self._event_callback = event_callback
+        self._input_guard = input_guard or PromptInjectionGuard()
         self._executor = ToolExecutor(
             self._registry,
             event_callback=event_callback,
@@ -67,6 +70,7 @@ class KnowledgeAgent:
             raise AgentValidationError(
                 "question must be a non-empty string"
             )
+        self._input_guard.validate(question)
 
         messages: list[dict[str, object]] = [
             {

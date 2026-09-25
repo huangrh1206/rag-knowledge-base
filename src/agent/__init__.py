@@ -10,10 +10,22 @@ from src.agent.types import (
     AgentResult,
     AgentRunConfig,
 )
+from src.agent.evaluation import (
+    AgentEvaluationCase,
+    AgentEvaluationResult,
+    AgentEvaluator,
+    ExpectedStateGrader,
+)
+from src.agent.safety import PromptInjectionGuard
 
 __all__ = [
     "AgentError",
     "AgentResult",
+    "AgentEvaluationCase",
+    "AgentEvaluationResult",
+    "AgentEvaluator",
+    "ExpectedStateGrader",
+    "PromptInjectionGuard",
     "AgentRunConfig",
     "KnowledgeAgent",
     "RAGSearchTool",
