@@ -16,6 +16,7 @@ from src.agent.types import (
     AgentStopReason,
     AgentValidationError,
 )
+from src.conversation.context import ConversationContext
 
 AGENT_PROMPT = (
     "You are a technical knowledge-base agent. "
@@ -37,6 +38,7 @@ class KnowledgeAgent:
         registry: ToolRegistry | None = None,
         event_callback: Callable[[str, dict[str, Any]], None] | None = None,
         input_guard: PromptInjectionGuard | None = None,
+        conversation: ConversationContext | None = None,
     ) -> None:
         if max_rounds is not None and run_config is not None:
             raise AgentValidationError(
@@ -50,6 +52,7 @@ class KnowledgeAgent:
         )
         self._event_callback = event_callback
         self._input_guard = input_guard or PromptInjectionGuard()
+        self._conversation = conversation
         self._executor = ToolExecutor(
             self._registry,
             event_callback=event_callback,
@@ -72,16 +75,22 @@ class KnowledgeAgent:
             )
         self._input_guard.validate(question)
 
-        messages: list[dict[str, object]] = [
-            {
-                "role": "system",
-                "content": AGENT_PROMPT,
-            },
-            {
-                "role": "user",
-                "content": question,
-            },
-        ]
+        if self._conversation is None:
+            messages: list[dict[str, object]] = [
+                {"role": "system", "content": AGENT_PROMPT},
+                {"role": "user", "content": question},
+            ]
+        else:
+            messages = self._conversation.build_messages(question)
+            system_messages = [
+                message for message in messages if message.get("role") == "system"
+            ]
+            if not system_messages:
+                messages.insert(0, {"role": "system", "content": AGENT_PROMPT})
+            else:
+                system_messages[0]["content"] = (
+                    f"{AGENT_PROMPT}\n\n{system_messages[0].get('content', '')}"
+                )
         started = time.monotonic()
         tool_call_count = 0
 
@@ -136,6 +145,8 @@ class KnowledgeAgent:
                     raise AgentEmptyResponseError(
                         "agent returned empty content"
                     )
+                if self._conversation is not None:
+                    self._conversation.record(messages)
                 return AgentResult(
                     answer=response.content.strip(),
                     rounds=round_number,
