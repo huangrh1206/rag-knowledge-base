@@ -8,6 +8,7 @@ from src.memory.long_term import (
     RuleBasedMemoryExtractor,
 )
 from src.memory.models import MemoryItem, MemoryScope
+from src.memory.factory import create_memory_store
 from src.memory.short_term import (
     ApproximateTokenEstimator,
     ShortTermMemory,
@@ -22,6 +23,7 @@ from src.memory.store import (
 
 __all__ = [
     "InMemoryMemoryStore",
+    "create_memory_store",
     "LongTermMemory",
     "ExtractedMemory",
     "MemoryExtractor",

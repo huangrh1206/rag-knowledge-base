@@ -24,6 +24,8 @@ def test_settings_uses_documented_model_defaults(
     assert settings.qdrant_collection == "rag_chunks"
     assert settings.redis_url == ""
     assert settings.redis_prefix == "rag:memory"
+    assert settings.memory_backend == "sqlite"
+    assert settings.memory_sqlite_path == Path("storage/memory.sqlite3")
 
 def test_settings_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("RAG_API_KEY", "test-key")
@@ -38,6 +40,8 @@ def test_settings_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("RAG_QDRANT_COLLECTION", "custom_chunks")
     monkeypatch.setenv("REDIS_URL", "redis://cache.example/1")
     monkeypatch.setenv("REDIS_PREFIX", "custom:memory")
+    monkeypatch.setenv("MEMORY_BACKEND", "redis")
+    monkeypatch.setenv("MEMORY_SQLITE_PATH", "custom/memory.sqlite3")
     settings = Settings.from_env()
 
     assert settings.api_key == "test-key"
@@ -53,6 +57,16 @@ def test_settings_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
     assert settings.qdrant_collection == "custom_chunks"
     assert settings.redis_url == "redis://cache.example/1"
     assert settings.redis_prefix == "custom:memory"
+    assert settings.memory_backend == "redis"
+    assert settings.memory_sqlite_path == Path("custom/memory.sqlite3")
+
+
+def test_settings_reject_invalid_memory_backend(monkeypatch) -> None:
+    monkeypatch.setenv("RAG_API_KEY", "test-key")
+    monkeypatch.setenv("MEMORY_BACKEND", "unknown")
+
+    with pytest.raises(ValueError, match="memory backend"):
+        Settings.from_env()
 
 
 def test_settings_reject_overlap_not_smaller_than_chunk(

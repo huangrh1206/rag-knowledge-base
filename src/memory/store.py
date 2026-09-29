@@ -105,7 +105,17 @@ class RedisMemoryStore:
     instantiated.
     """
 
-    def __init__(self, url: str | None = None, *, client=None, prefix: str | None = None) -> None:
+    def __init__(
+        self,
+        url: str | None = None,
+        *,
+        client=None,
+        prefix: str | None = None,
+        settings=None,
+    ) -> None:
+        if settings is not None:
+            url = url or settings.redis_url
+            prefix = prefix or settings.redis_prefix
         if client is not None:
             import os
 

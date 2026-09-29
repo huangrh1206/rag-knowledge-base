@@ -49,6 +49,8 @@ class Settings:
     qdrant_collection: str = "rag_chunks"
     redis_url: str = ""
     redis_prefix: str = "rag:memory"
+    memory_backend: str = "sqlite"
+    memory_sqlite_path: Path = Path("storage/memory.sqlite3")
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -114,6 +116,10 @@ class Settings:
             qdrant_collection=os.getenv("RAG_QDRANT_COLLECTION", "rag_chunks").strip(),
             redis_url=os.getenv("REDIS_URL", "").strip(),
             redis_prefix=os.getenv("REDIS_PREFIX", "rag:memory").strip(),
+            memory_backend=os.getenv("MEMORY_BACKEND", "sqlite").strip().lower(),
+            memory_sqlite_path=Path(
+                os.getenv("MEMORY_SQLITE_PATH", "storage/memory.sqlite3")
+            ),
         )
 
         if settings.chunk_size <= 0:
@@ -184,6 +190,9 @@ class Settings:
 
         if not settings.redis_prefix:
             raise ValueError("redis prefix cannot be empty")
+
+        if settings.memory_backend not in {"memory", "sqlite", "redis"}:
+            raise ValueError("memory backend must be memory, sqlite or redis")
 
         if settings.request_timeout <= 0:
             raise ValueError(
