@@ -22,6 +22,8 @@ def test_settings_uses_documented_model_defaults(
     assert settings.vector_store_backend == "numpy"
     assert settings.qdrant_path == Path("storage/qdrant")
     assert settings.qdrant_collection == "rag_chunks"
+    assert settings.redis_url == ""
+    assert settings.redis_prefix == "rag:memory"
 
 def test_settings_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("RAG_API_KEY", "test-key")
@@ -34,6 +36,8 @@ def test_settings_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("RAG_VECTOR_STORE_BACKEND", "qdrant")
     monkeypatch.setenv("RAG_QDRANT_PATH", "custom/qdrant")
     monkeypatch.setenv("RAG_QDRANT_COLLECTION", "custom_chunks")
+    monkeypatch.setenv("REDIS_URL", "redis://cache.example/1")
+    monkeypatch.setenv("REDIS_PREFIX", "custom:memory")
     settings = Settings.from_env()
 
     assert settings.api_key == "test-key"
@@ -47,6 +51,8 @@ def test_settings_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
     assert settings.vector_store_backend == "qdrant"
     assert settings.qdrant_path == Path("custom/qdrant")
     assert settings.qdrant_collection == "custom_chunks"
+    assert settings.redis_url == "redis://cache.example/1"
+    assert settings.redis_prefix == "custom:memory"
 
 
 def test_settings_reject_overlap_not_smaller_than_chunk(

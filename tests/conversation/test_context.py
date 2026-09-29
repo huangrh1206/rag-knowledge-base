@@ -1,4 +1,6 @@
-from src.conversation import ConversationContext
+import pytest
+
+from src.conversation import ConversationContext, ConversationStatus
 from src.memory import (
     InMemoryMemoryStore,
     LongTermMemory,
@@ -34,3 +36,37 @@ def test_conversation_context_combines_memory_and_turns() -> None:
     assert long_term.recall(scope, memory_type="preference")[0].content == (
         "I prefer detailed answers"
     )
+
+
+def test_conversation_can_pause_resume_and_complete() -> None:
+    context = ConversationContext(MemoryScope("tenant", "user"))
+    context.record_turn("hello", "hi")
+    assert context.status is ConversationStatus.ACTIVE
+    assert context.turn_count == 1
+
+    context.pause()
+    with pytest.raises(RuntimeError, match="not active"):
+        context.build_messages("continue")
+
+    context.resume()
+    assert context.build_messages("continue")[-1]["content"] == "continue"
+    context.complete()
+    with pytest.raises(RuntimeError, match="not active"):
+        context.build_messages("after completion")
+
+    context.reset()
+    assert context.status is ConversationStatus.ACTIVE
+    assert context.turn_count == 0
+
+
+def test_conversation_snapshot_round_trips() -> None:
+    context = ConversationContext(MemoryScope("tenant", "user"))
+    context.record_turn("hello", "hi")
+    context.pause()
+
+    restored = ConversationContext(MemoryScope("tenant", "user"))
+    restored.restore(context.snapshot())
+
+    assert restored.status is ConversationStatus.PAUSED
+    assert restored.turn_count == 1
+    assert restored.short_term.messages()[-1]["content"] == "hi"

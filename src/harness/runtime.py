@@ -12,6 +12,7 @@ from src.harness.policy import HarnessPolicy
 from src.harness.session import SessionStore
 from src.harness.store import HarnessSessionStore
 from src.harness.tracing import HarnessEventRecorder
+from src.conversation.context import ConversationContext
 
 
 _NO_RESUME_VALUE = object()
@@ -48,6 +49,7 @@ class HarnessRuntime:
         resume: bool = False,
         resume_value: Any = _NO_RESUME_VALUE,
         cancel_at: int | None = None,
+        conversation: ConversationContext | None = None,
     ) -> HarnessResult:
         if not steps:
             raise ValueError("at least one step is required")
@@ -59,6 +61,8 @@ class HarnessRuntime:
         # Read the persisted cursor before compiling this invocation's budget.
         base_graph = graph_builder.compile(checkpointer=self.checkpointer)
         snapshot = base_graph.get_state(config)
+        if conversation is not None and resume and snapshot.values.get("conversation"):
+            conversation.restore(snapshot.values["conversation"])
         start = self._next_step(snapshot, len(steps)) if resume else 0
 
         if cancel_at is not None and cancel_at <= start:
@@ -82,6 +86,8 @@ class HarnessRuntime:
 
         self._record(run_id, "run_started", {"resume": resume, "next_step": start})
         invoke_input: Any = {}
+        if not resume and conversation is not None:
+            invoke_input = {"conversation": conversation.snapshot()}
         if resume:
             invoke_input = (
                 Command(resume=resume_value)
@@ -101,6 +107,8 @@ class HarnessRuntime:
             )
 
         latest = graph.get_state(config)
+        if conversation is not None and latest.values.get("conversation"):
+            conversation.restore(latest.values["conversation"])
         next_step = self._next_step(latest, len(steps))
         status = "completed"
         if cancel_at is not None and latest.next == (f"step_{cancel_at}",):
@@ -114,6 +122,18 @@ class HarnessRuntime:
             self._record(run_id, "run_paused", {"next_step": next_step})
         else:
             self._record(run_id, "run_completed", {"state": dict(latest.values)})
+
+        if conversation is not None:
+            if status in {"paused", "interrupted", "cancelled"}:
+                if conversation.status.value == "active":
+                    conversation.pause()
+            elif status == "completed":
+                conversation.complete()
+            graph.update_state(
+                config,
+                {"conversation": conversation.snapshot()},
+            )
+            latest = graph.get_state(config)
 
         return self._result(run_id, status, latest.values, next_step)
 
@@ -144,6 +164,8 @@ class HarnessRuntime:
                     result = step(dict(state))
                     if not isinstance(result, dict):
                         raise TypeError("Harness step must return a dictionary")
+                    if "conversation" in state and "conversation" not in result:
+                        result["conversation"] = state["conversation"]
                     self._record(
                         run_id,
                         "step_succeeded",

@@ -33,6 +33,7 @@ class MemoryItem:
     memory_id: str = field(default_factory=lambda: str(uuid4()))
     created_at: str = field(default_factory=utc_now)
     updated_at: str = field(default_factory=utc_now)
+    expires_at: str | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
@@ -42,3 +43,6 @@ class MemoryItem:
             raise ValueError("memory type must be non-empty")
         if not 0 <= self.importance <= 1:
             raise ValueError("importance must be between 0 and 1")
+
+    def is_expired(self, now: str | None = None) -> bool:
+        return self.expires_at is not None and self.expires_at <= (now or utc_now())

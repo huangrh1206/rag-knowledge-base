@@ -4,11 +4,21 @@ from src.memory.long_term import (
     ExtractedMemory,
     LongTermMemory,
     MemoryExtractor,
+    MemoryWritePolicy,
     RuleBasedMemoryExtractor,
 )
 from src.memory.models import MemoryItem, MemoryScope
-from src.memory.short_term import ShortTermMemory
-from src.memory.store import InMemoryMemoryStore, MemoryStore, SQLiteMemoryStore
+from src.memory.short_term import (
+    ApproximateTokenEstimator,
+    ShortTermMemory,
+    TokenEstimator,
+)
+from src.memory.store import (
+    InMemoryMemoryStore,
+    MemoryStore,
+    RedisMemoryStore,
+    SQLiteMemoryStore,
+)
 
 __all__ = [
     "InMemoryMemoryStore",
@@ -18,7 +28,11 @@ __all__ = [
     "MemoryItem",
     "MemoryScope",
     "MemoryStore",
+    "RedisMemoryStore",
+    "MemoryWritePolicy",
     "SQLiteMemoryStore",
     "ShortTermMemory",
+    "ApproximateTokenEstimator",
+    "TokenEstimator",
     "RuleBasedMemoryExtractor",
 ]

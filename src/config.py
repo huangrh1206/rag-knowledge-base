@@ -47,6 +47,8 @@ class Settings:
     vector_store_backend: str = "numpy"
     qdrant_path: Path = Path("storage/qdrant")
     qdrant_collection: str = "rag_chunks"
+    redis_url: str = ""
+    redis_prefix: str = "rag:memory"
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -110,6 +112,8 @@ class Settings:
             vector_store_backend=os.getenv("RAG_VECTOR_STORE_BACKEND", "numpy").strip().lower(),
             qdrant_path=Path(os.getenv("RAG_QDRANT_PATH", "storage/qdrant")),
             qdrant_collection=os.getenv("RAG_QDRANT_COLLECTION", "rag_chunks").strip(),
+            redis_url=os.getenv("REDIS_URL", "").strip(),
+            redis_prefix=os.getenv("REDIS_PREFIX", "rag:memory").strip(),
         )
 
         if settings.chunk_size <= 0:
@@ -177,6 +181,9 @@ class Settings:
             raise ValueError(
                 "qdrant collection cannot be empty"
             )
+
+        if not settings.redis_prefix:
+            raise ValueError("redis prefix cannot be empty")
 
         if settings.request_timeout <= 0:
             raise ValueError(
