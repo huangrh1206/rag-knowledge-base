@@ -15,6 +15,32 @@ from pathlib import Path
 
 from src.cli import configure_logging
 
+
+def test_create_chat_agent_injects_conversation_context(monkeypatch) -> None:
+    import src.cli as cli_module
+
+    settings = Settings(
+        api_key="test-key",
+        base_url=None,
+        chat_model="chat-model",
+        embedding_model="embedding-model",
+        memory_backend="memory",
+    )
+    client = SimpleNamespace(chat=SimpleNamespace(completions=object()))
+    retriever = object()
+    conversation = object()
+
+    monkeypatch.setattr(
+        cli_module.ConversationContext,
+        "from_settings",
+        classmethod(lambda cls, scope, *, settings: conversation),
+    )
+
+    agent = cli_module._create_chat_agent(settings, client, retriever)
+
+    assert agent._conversation is conversation
+    assert agent._retriever is retriever
+
 def test_parser_accepts_index_ask_and_chat_commands() -> None:
     parser = build_parser()
 

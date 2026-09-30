@@ -68,6 +68,12 @@ class KnowledgeAgent:
     def run(self, question: str) -> str:
         return self.run_result(question).answer
 
+    def reset_conversation(self) -> None:
+        """Clear the attached conversation context when one is configured."""
+
+        if self._conversation is not None:
+            self._conversation.reset()
+
     def run_result(self, question: str) -> AgentResult:
         if not isinstance(question, str) or not question.strip():
             raise AgentValidationError(

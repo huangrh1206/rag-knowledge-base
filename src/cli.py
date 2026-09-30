@@ -16,6 +16,8 @@ from src.rag.generator import AnswerGenerator
 from src.rag.service import RAGService, build_index, build_qdrant_index
 from src.rag.evidence_policy import EvidencePolicy
 from src.retrieval.factory import create_retriever
+from src.conversation import ConversationContext
+from src.memory.models import MemoryScope
 
 def configure_logging() -> None:
     log_dir = Path("log")
@@ -98,6 +100,27 @@ def _embedder(
     )
 
 
+def _create_chat_agent(
+    settings: Settings,
+    client: OpenAI,
+    retriever,
+) -> KnowledgeAgent:
+    conversation = ConversationContext.from_settings(
+        MemoryScope(
+            tenant_id="default",
+            user_id="cli-user",
+            scene_id="chat",
+        ),
+        settings=settings,
+    )
+    return KnowledgeAgent(
+        api=client.chat.completions,
+        model=settings.chat_model,
+        retriever=retriever,
+        conversation=conversation,
+    )
+
+
 def main() -> int:
     configure_logging()
 
@@ -168,11 +191,7 @@ def main() -> int:
             print_answer(service.ask(args.question))
             return 0
 
-        agent = KnowledgeAgent(
-            api=client.chat.completions,
-            model=settings.chat_model,
-            retriever=retriever,
-        )
+        agent = _create_chat_agent(settings, client, retriever)
 
         while True:
             question = input("You> ").strip()
@@ -183,6 +202,11 @@ def main() -> int:
                 "退出",
             }:
                 return 0
+
+            if question.lower() == "reset":
+                agent.reset_conversation()
+                print("Conversation memory reset.")
+                continue
 
             if question:
                 print(f"Assistant> {agent.run(question)}")
