@@ -12,6 +12,9 @@ from src.agent.types import (
 )
 from src.rag.models import Chunk, SearchResult
 from src.agent.tools import RAGSearchTool, ToolRegistry
+from src.agent.types import AgentModelResponse
+from src.conversation import ConversationContext
+from src.memory import InMemoryMemoryStore, LongTermMemory, MemoryScope
 
 
 def tool_call(
@@ -195,3 +198,41 @@ def test_agent_uses_injected_tool_registry() -> None:
     retriever = FakeRetriever()
     agent = KnowledgeAgent(FakeCompletions([first, second]), "chat-model", retriever, registry=ToolRegistry([RAGSearchTool(retriever)]))
     assert agent.run("Question") == "answer"
+
+
+class RecordingGateway:
+    def __init__(self, responses: list[AgentModelResponse]) -> None:
+        self.responses = responses
+        self.calls: list[list[dict[str, object]]] = []
+
+    def complete(self, messages, tools):
+        self.calls.append([dict(message) for message in messages])
+        return self.responses[len(self.calls) - 1]
+
+
+def test_agent_reuses_conversation_context_across_turns() -> None:
+    scope = MemoryScope("tenant", "user", "support")
+    long_term = LongTermMemory(InMemoryMemoryStore())
+    long_term.remember(scope, "User prefers concise answers", key="style")
+    conversation = ConversationContext(scope, long_term=long_term)
+    gateway = RecordingGateway([
+        AgentModelResponse("First answer"),
+        AgentModelResponse("Second answer"),
+    ])
+    agent = KnowledgeAgent(
+        api=None,
+        model="chat-model",
+        retriever=FakeRetriever(),
+        gateway=gateway,
+        conversation=conversation,
+    )
+
+    assert agent.run("How concise should you answer?") == "First answer"
+    assert agent.run("And now?") == "Second answer"
+
+    assert "Relevant memory:" in str(gateway.calls[0][0]["content"])
+    assert gateway.calls[1][-2] == {
+        "role": "assistant",
+        "content": "First answer",
+    }
+    assert gateway.calls[1][-1] == {"role": "user", "content": "And now?"}
