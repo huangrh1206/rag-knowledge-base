@@ -1,0 +1,14 @@
+.git
+.github
+.venv
+ragenv
+__pycache__
+*.pyc
+.pytest_cache
+.pytest-tmp
+storage
+documents
+log
+.env
+tests
+docs
