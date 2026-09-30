@@ -26,6 +26,10 @@ def test_settings_uses_documented_model_defaults(
     assert settings.redis_prefix == "rag:memory"
     assert settings.memory_backend == "sqlite"
     assert settings.memory_sqlite_path == Path("storage/memory.sqlite3")
+    assert settings.memory_max_messages == 20
+    assert settings.memory_max_chars == 24_000
+    assert settings.memory_max_tokens == 6_000
+    assert settings.memory_min_confidence == 0.6
 
 def test_settings_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("RAG_API_KEY", "test-key")
@@ -42,6 +46,10 @@ def test_settings_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("REDIS_PREFIX", "custom:memory")
     monkeypatch.setenv("MEMORY_BACKEND", "redis")
     monkeypatch.setenv("MEMORY_SQLITE_PATH", "custom/memory.sqlite3")
+    monkeypatch.setenv("MEMORY_MAX_MESSAGES", "30")
+    monkeypatch.setenv("MEMORY_MAX_CHARS", "12000")
+    monkeypatch.setenv("MEMORY_MAX_TOKENS", "3000")
+    monkeypatch.setenv("MEMORY_MIN_CONFIDENCE", "0.8")
     settings = Settings.from_env()
 
     assert settings.api_key == "test-key"
@@ -59,6 +67,10 @@ def test_settings_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
     assert settings.redis_prefix == "custom:memory"
     assert settings.memory_backend == "redis"
     assert settings.memory_sqlite_path == Path("custom/memory.sqlite3")
+    assert settings.memory_max_messages == 30
+    assert settings.memory_max_chars == 12000
+    assert settings.memory_max_tokens == 3000
+    assert settings.memory_min_confidence == 0.8
 
 
 def test_settings_reject_invalid_memory_backend(monkeypatch) -> None:

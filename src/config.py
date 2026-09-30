@@ -51,6 +51,10 @@ class Settings:
     redis_prefix: str = "rag:memory"
     memory_backend: str = "sqlite"
     memory_sqlite_path: Path = Path("storage/memory.sqlite3")
+    memory_max_messages: int = 20
+    memory_max_chars: int = 24_000
+    memory_max_tokens: int | None = 6_000
+    memory_min_confidence: float = 0.6
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -120,6 +124,10 @@ class Settings:
             memory_sqlite_path=Path(
                 os.getenv("MEMORY_SQLITE_PATH", "storage/memory.sqlite3")
             ),
+            memory_max_messages=int(os.getenv("MEMORY_MAX_MESSAGES", 20)),
+            memory_max_chars=int(os.getenv("MEMORY_MAX_CHARS", 24_000)),
+            memory_max_tokens=int(os.getenv("MEMORY_MAX_TOKENS", 6_000)),
+            memory_min_confidence=float(os.getenv("MEMORY_MIN_CONFIDENCE", 0.6)),
         )
 
         if settings.chunk_size <= 0:
@@ -193,6 +201,15 @@ class Settings:
 
         if settings.memory_backend not in {"memory", "sqlite", "redis"}:
             raise ValueError("memory backend must be memory, sqlite or redis")
+
+        if settings.memory_max_messages < 2:
+            raise ValueError("memory max messages must be at least 2")
+        if settings.memory_max_chars <= 0:
+            raise ValueError("memory max chars must be positive")
+        if settings.memory_max_tokens is not None and settings.memory_max_tokens <= 0:
+            raise ValueError("memory max tokens must be positive")
+        if not 0 <= settings.memory_min_confidence <= 1:
+            raise ValueError("memory minimum confidence must be between 0 and 1")
 
         if settings.request_timeout <= 0:
             raise ValueError(

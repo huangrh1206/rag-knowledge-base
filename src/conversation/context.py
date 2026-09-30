@@ -15,6 +15,35 @@ class ConversationStatus(StrEnum):
 
 
 class ConversationContext:
+    @classmethod
+    def from_settings(
+        cls,
+        scope: MemoryScope,
+        *,
+        settings=None,
+        extractor: MemoryExtractor | None = None,
+    ) -> "ConversationContext":
+        from src.config import Settings
+        from src.memory.factory import create_memory_store
+        from src.memory.long_term import MemoryWritePolicy
+
+        settings = settings or Settings.from_env()
+        return cls(
+            scope,
+            short_term=ShortTermMemory(
+                max_messages=settings.memory_max_messages,
+                max_chars=settings.memory_max_chars,
+                max_tokens=settings.memory_max_tokens,
+            ),
+            long_term=LongTermMemory(
+                create_memory_store(settings),
+                policy=MemoryWritePolicy(
+                    min_confidence=settings.memory_min_confidence,
+                ),
+            ),
+            extractor=extractor,
+        )
+
     def __init__(
         self,
         scope: MemoryScope,

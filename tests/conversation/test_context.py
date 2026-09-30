@@ -70,3 +70,30 @@ def test_conversation_snapshot_round_trips() -> None:
     assert restored.status is ConversationStatus.PAUSED
     assert restored.turn_count == 1
     assert restored.short_term.messages()[-1]["content"] == "hi"
+
+
+def test_conversation_from_settings_wires_memory_limits(tmp_path) -> None:
+    from pathlib import Path
+    from src.config import Settings
+
+    settings = Settings(
+        api_key="test-key",
+        base_url=None,
+        chat_model="chat",
+        embedding_model="embedding",
+        memory_backend="sqlite",
+        memory_sqlite_path=Path(tmp_path) / "memory.sqlite3",
+        memory_max_messages=4,
+        memory_max_chars=1000,
+        memory_max_tokens=200,
+        memory_min_confidence=0.9,
+    )
+    context = ConversationContext.from_settings(
+        MemoryScope("tenant", "user"),
+        settings=settings,
+    )
+
+    assert context.short_term.max_messages == 4
+    assert context.short_term.max_chars == 1000
+    assert context.short_term.max_tokens == 200
+    assert context.long_term is not None
