@@ -53,6 +53,7 @@ def test_tests_are_grouped_by_source_responsibility() -> None:
     assert test_groups == {
         "agent",
         "application",
+        "api",
         "authz",
         "conversation",
         "evaluation",
