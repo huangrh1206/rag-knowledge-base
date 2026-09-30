@@ -21,6 +21,7 @@ dependencies = [
 
 [project.scripts]
 rag = "src.cli:main"
+rag-api = "src.api.main:main"
 
 [project.optional-dependencies]
 test = [
