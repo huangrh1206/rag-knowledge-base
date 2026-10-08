@@ -74,6 +74,9 @@ class StepResult:
     artifacts: dict[str, Any] = field(default_factory=dict)
     superstep_id: int = 0
 
+    def __post_init__(self) -> None:
+        self.status = StepStatus(self.status)
+
     def to_dict(self) -> dict[str, Any]:
         return asdict(self) | {"status": self.status.value}
 
@@ -85,4 +88,3 @@ class TaskResult:
     final_answer: Any = None
     state: dict[str, Any] = field(default_factory=dict)
     error: str | None = None
-

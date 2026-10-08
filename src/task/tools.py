@@ -47,6 +47,21 @@ class TaskToolRegistry:
         try: return self._tools[name]
         except KeyError as exc: raise ToolExecutionError(f"unknown tool: {name}", tool=name) from exc
 
+    def validate(self, name: str, arguments: dict[str, Any]) -> None:
+        tool = self.get(name)
+        schema = getattr(tool, "parameters", None)
+        if schema is None:
+            definition = getattr(tool, "definition", {})
+            schema = definition.get("function", {}).get("parameters") if isinstance(definition, dict) else None
+        if not schema:
+            return
+        properties = schema.get("properties", {})
+        missing = set(schema.get("required", [])) - set(arguments)
+        extra = set(arguments) - set(properties)
+        if missing: raise ToolExecutionError(f"missing arguments: {sorted(missing)}", tool=name)
+        if extra and schema.get("additionalProperties") is False:
+            raise ToolExecutionError(f"unexpected arguments: {sorted(extra)}", tool=name)
+
     def names(self) -> list[str]: return list(self._tools)
     def definitions(self) -> list[dict[str, Any]]:
         return [{"name": t.name, "description": getattr(t, "description", "")} for t in self._tools.values()]
@@ -70,6 +85,7 @@ class TaskToolExecutor:
     async def invoke_async(self, name: str, arguments: dict[str, Any], *, idempotency_key: str | None = None) -> Any:
         if not isinstance(arguments, dict): raise ToolExecutionError("arguments must be an object", tool=name)
         if idempotency_key and idempotency_key in self._completed: return self._completed[idempotency_key]
+        self.registry.validate(name, arguments)
         tool = self.registry.get(name)
         started = time.time()
         try:

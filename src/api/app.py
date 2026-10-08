@@ -27,6 +27,7 @@ def create_app(
     agent: AgentLike,
     *,
     health_check: Callable[[], dict[str, Any]] | None = None,
+    task_runtime: Any | None = None,
 ) -> Any:
     """Create an HTTP application around an injected Agent instance."""
 
@@ -55,5 +56,9 @@ def create_app(
                 detail="agent request failed",
             ) from exc
         return AskResponse(answer=answer)
+
+    if task_runtime is not None:
+        from src.api.task_routes import register_task_routes
+        register_task_routes(app, task_runtime)
 
     return app

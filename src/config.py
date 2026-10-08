@@ -55,6 +55,9 @@ class Settings:
     memory_max_chars: int = 24_000
     memory_max_tokens: int | None = 6_000
     memory_min_confidence: float = 0.6
+    task_tenant_id: str = "default"
+    task_user_id: str = "cli-user"
+    task_agent_id: str = "general-task-agent"
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -128,6 +131,9 @@ class Settings:
             memory_max_chars=int(os.getenv("MEMORY_MAX_CHARS", 24_000)),
             memory_max_tokens=int(os.getenv("MEMORY_MAX_TOKENS", 6_000)),
             memory_min_confidence=float(os.getenv("MEMORY_MIN_CONFIDENCE", 0.6)),
+            task_tenant_id=os.getenv("TASK_TENANT_ID", "default").strip(),
+            task_user_id=os.getenv("TASK_USER_ID", "cli-user").strip(),
+            task_agent_id=os.getenv("TASK_AGENT_ID", "general-task-agent").strip(),
         )
 
         if settings.chunk_size <= 0:
@@ -210,6 +216,8 @@ class Settings:
             raise ValueError("memory max tokens must be positive")
         if not 0 <= settings.memory_min_confidence <= 1:
             raise ValueError("memory minimum confidence must be between 0 and 1")
+        if not settings.task_tenant_id or not settings.task_user_id or not settings.task_agent_id:
+            raise ValueError("task memory identity fields must be non-empty")
 
         if settings.request_timeout <= 0:
             raise ValueError(

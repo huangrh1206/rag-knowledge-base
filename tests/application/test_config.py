@@ -50,6 +50,9 @@ def test_settings_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("MEMORY_MAX_CHARS", "12000")
     monkeypatch.setenv("MEMORY_MAX_TOKENS", "3000")
     monkeypatch.setenv("MEMORY_MIN_CONFIDENCE", "0.8")
+    monkeypatch.setenv("TASK_TENANT_ID", "tenant-a")
+    monkeypatch.setenv("TASK_USER_ID", "user-123")
+    monkeypatch.setenv("TASK_AGENT_ID", "general-agent")
     settings = Settings.from_env()
 
     assert settings.api_key == "test-key"
@@ -71,6 +74,9 @@ def test_settings_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
     assert settings.memory_max_chars == 12000
     assert settings.memory_max_tokens == 3000
     assert settings.memory_min_confidence == 0.8
+    assert settings.task_tenant_id == "tenant-a"
+    assert settings.task_user_id == "user-123"
+    assert settings.task_agent_id == "general-agent"
 
 
 def test_settings_reject_invalid_memory_backend(monkeypatch) -> None:

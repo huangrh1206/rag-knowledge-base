@@ -30,8 +30,9 @@ def test_source_is_grouped_into_responsibility_packages() -> None:
         "rag",
         "retrieval",
         "tools",
-        "workflow",
-    }
+            "workflow",
+            "task",
+        }
     actual_packages = {
         path.name
         for path in SOURCE_ROOT.iterdir()
@@ -66,4 +67,5 @@ def test_tests_are_grouped_by_source_responsibility() -> None:
         "retrieval",
         "tools",
         "workflow",
+        "task",
     }

@@ -97,3 +97,115 @@ def test_conversation_from_settings_wires_memory_limits(tmp_path) -> None:
     assert context.short_term.max_chars == 1000
     assert context.short_term.max_tokens == 200
     assert context.long_term is not None
+
+
+def test_conversation_short_term_reopens_from_sqlite(tmp_path) -> None:
+    from pathlib import Path
+    from src.config import Settings
+
+    settings = Settings(
+        api_key="test-key",
+        base_url=None,
+        chat_model="chat",
+        embedding_model="embedding",
+        memory_backend="sqlite",
+        memory_sqlite_path=Path(tmp_path) / "memory.sqlite3",
+    )
+    scope = MemoryScope("tenant", "user", "general")
+
+    first = ConversationContext.from_settings(
+        scope,
+        settings=settings,
+        session_id="session-1",
+    )
+    first.record_turn("我住在南京", "好的，我记住了")
+
+    second = ConversationContext.from_settings(
+        scope,
+        settings=settings,
+        session_id="session-1",
+    )
+    assert second.short_term.messages() == [
+        {"role": "user", "content": "我住在南京"},
+        {"role": "assistant", "content": "好的，我记住了"},
+    ]
+
+    isolated = ConversationContext.from_settings(
+        scope,
+        settings=settings,
+        session_id="other-session",
+    )
+    assert isolated.short_term.messages() == []
+
+
+def test_settings_context_extracts_long_term_memory_by_default(tmp_path) -> None:
+    from pathlib import Path
+    from src.config import Settings
+    from src.memory.store import SQLiteMemoryStore
+
+    database = Path(tmp_path) / "memory.sqlite3"
+    settings = Settings(
+        api_key="test-key",
+        base_url=None,
+        chat_model="chat",
+        embedding_model="embedding",
+        memory_backend="sqlite",
+        memory_sqlite_path=database,
+    )
+    scope = MemoryScope("tenant", "user", "general")
+
+    context = ConversationContext.from_settings(
+        scope,
+        settings=settings,
+        session_id="session-1",
+    )
+    context.record_turn(
+        "记住我在南京江宁区的河海大学，是河海大学的研三学生。我旅游喜欢博物馆。",
+        "好的，我记住了。",
+    )
+
+    store = SQLiteMemoryStore(database)
+    items = store.search(scope, "河海大学", limit=10)
+    assert any("河海大学" in item.content for item in items)
+    assert any(item.memory_type == "preference" for item in store.search(scope, "博物馆"))
+    store.close()
+
+
+def test_reopening_existing_session_backfills_long_term_memory(tmp_path) -> None:
+    from pathlib import Path
+    from src.config import Settings
+    from src.conversation.store import SQLiteConversationStore
+    from src.memory.store import SQLiteMemoryStore
+
+    database = Path(tmp_path) / "memory.sqlite3"
+    settings = Settings(
+        api_key="test-key",
+        base_url=None,
+        chat_model="chat",
+        embedding_model="embedding",
+        memory_backend="sqlite",
+        memory_sqlite_path=database,
+    )
+    scope = MemoryScope("tenant", "user", "general")
+    SQLiteConversationStore(database).save(
+        scope,
+        "old-session",
+        {
+            "status": "active",
+            "turn_count": 1,
+            "messages": [
+                {"role": "user", "content": "我在河海大学上学。"},
+                {"role": "assistant", "content": "好的。"},
+            ],
+        },
+    )
+
+    ConversationContext.from_settings(
+        scope,
+        settings=settings,
+        session_id="old-session",
+    )
+
+    store = SQLiteMemoryStore(database)
+    assert any("河海大学" in item.content for item in store.search(scope, "河海大学"))
+    store.close()

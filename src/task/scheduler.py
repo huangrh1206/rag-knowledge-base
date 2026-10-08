@@ -12,6 +12,13 @@ class SuperstepResult:
     results: list[StepResult]
     ready_steps: list[str]
 
+    def to_dict(self) -> dict[str, Any]:
+        return {"superstep_id": self.superstep_id, "results": [r.to_dict() for r in self.results], "ready_steps": list(self.ready_steps)}
+
+    @classmethod
+    def from_dict(cls, value: dict[str, Any]) -> "SuperstepResult":
+        return cls(value["superstep_id"], [StepResult(**r) for r in value.get("results", [])], value.get("ready_steps", []))
+
 class SuperstepScheduler:
     def __init__(self, executor: TaskToolExecutor | None = None, *, parallel: bool = True): self.executor, self.parallel = executor, parallel
     def find_ready(self, state: TaskState) -> list[str]:
@@ -32,6 +39,7 @@ class SuperstepScheduler:
     def run(self, state: TaskState, step_ids: list[str] | None = None) -> SuperstepResult:
         return asyncio.run(self.run_async(state, step_ids))
     def merge(self, state: TaskState, result: SuperstepResult) -> TaskState:
+        state.events.append({"type": "superstep_started", "superstep_id": result.superstep_id, "steps": [r.step_id for r in result.results]})
         for item in result.results:
             step = next(s for s in state.plan if s.id == item.step_id)
             step.status = item.status; step.result, step.error = item.result, item.error
@@ -41,7 +49,7 @@ class SuperstepScheduler:
             else:
                 if item.step_id not in state.failed_steps: state.failed_steps.append(item.step_id)
                 state.error = item.error
+            state.events.append({"type": "step_succeeded" if item.status == StepStatus.COMPLETED else "step_failed", "step_id": item.step_id, "superstep_id": result.superstep_id, "error": item.error})
         state.superstep_id += 1
         state.ready_steps = self.find_ready(state)
         return state
-

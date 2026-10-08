@@ -58,6 +58,32 @@ def test_rule_extractor_updates_same_preference_key() -> None:
     assert items[0].content == "I prefer detailed answers"
 
 
+def test_rule_extractor_supports_chinese_personal_facts() -> None:
+    extractor = RuleBasedMemoryExtractor()
+    memories = extractor.extract([
+        {
+            "role": "user",
+            "content": "我在南京江宁区的河海大学上学。我住在南京。我在软件公司工作。我的妈妈住在苏州。我喜欢博物馆。",
+        }
+    ])
+
+    assert [(item.memory_type, item.key) for item in memories] == [
+        ("school", "school"),
+        ("location", "location"),
+        ("occupation", "occupation"),
+        ("family", "family"),
+        ("preference", "preference"),
+    ]
+
+
+def test_rule_extractor_accepts_plain_chinese_identity_without_remember() -> None:
+    memories = RuleBasedMemoryExtractor().extract([
+        {"role": "user", "content": "我叫李明。"}
+    ])
+    assert memories[0].memory_type == "identity"
+    assert memories[0].key == "identity"
+
+
 def test_memory_policy_rejects_sensitive_and_injection_content() -> None:
     memory = LongTermMemory(
         InMemoryMemoryStore(),

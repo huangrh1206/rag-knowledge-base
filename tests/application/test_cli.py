@@ -47,6 +47,58 @@ def test_parser_accepts_index_ask_and_chat_commands() -> None:
     assert parser.parse_args(["index", "data"]).command == "index"
     assert parser.parse_args(["ask", "What is RAG?"]).question == "What is RAG?"
     assert parser.parse_args(["chat"]).command == "chat"
+    assert parser.parse_args(["task", "do work"]).goal == "do work"
+    assert parser.parse_args(["task-chat"]).command == "task-chat"
+
+
+def test_task_chat_wires_persistent_conversation(monkeypatch) -> None:
+    import src.cli as cli_module
+
+    settings = Settings(
+        api_key="test-key",
+        base_url=None,
+        chat_model="chat-model",
+        embedding_model="embedding-model",
+        memory_backend="memory",
+    )
+    captured = {}
+    context = object()
+
+    monkeypatch.setattr(cli_module, "ConversationContext", SimpleNamespace(
+        from_settings=lambda scope, *, settings, session_id: captured.setdefault(
+            "context", context
+        ),
+    ))
+    monkeypatch.setattr(cli_module, "TaskChatResponder", lambda api, model: object())
+    monkeypatch.setattr(cli_module, "input", lambda _: "q", raising=False)
+
+    result = cli_module._run_task_chat(
+        settings,
+        SimpleNamespace(chat=SimpleNamespace(completions=object())),
+    )
+
+    assert result == 0
+    assert captured["context"] is context
+
+
+def test_task_chat_parser_accepts_session_id() -> None:
+    args = build_parser().parse_args(["task-chat", "--session-id", "trip"])
+    assert args.session_id == "trip"
+
+
+def test_task_agent_command_does_not_require_rag_settings(capsys) -> None:
+    import src.cli as cli_module
+
+    monkeypatch = pytest.MonkeyPatch()
+    try:
+        monkeypatch.setattr(cli_module, "configure_logging", lambda: None)
+        monkeypatch.setattr(cli_module, "build_parser", lambda: SimpleNamespace(
+            parse_args=lambda: SimpleNamespace(command="task", goal="do work", plan=None)
+        ))
+        assert cli_module.main() == 0
+        assert '"status": "completed"' in capsys.readouterr().out
+    finally:
+        monkeypatch.undo()
 
 
 def test_print_answer_includes_citation(capsys) -> None:

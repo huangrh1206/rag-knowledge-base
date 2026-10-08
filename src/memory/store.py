@@ -4,9 +4,43 @@ from collections.abc import Iterable
 import json
 from pathlib import Path
 import sqlite3
+import re
 from typing import Protocol
 
 from src.memory.models import MemoryItem, MemoryScope, utc_now
+
+
+def _is_cjk(text: str) -> bool:
+    return any("\u4e00" <= char <= "\u9fff" for char in text)
+
+
+def _terms(text: str) -> set[str]:
+    normalized = text.casefold().strip()
+    terms = set(re.findall(r"[a-z0-9_]+", normalized))
+    cjk = "".join(re.findall(r"[\u4e00-\u9fff]", normalized))
+    terms.update(cjk)
+    terms.update(cjk[index:index + 2] for index in range(max(0, len(cjk) - 1)))
+    return {term for term in terms if term}
+
+
+def _score_memory(content: str, query: str) -> int:
+    if not query.strip():
+        return 0
+    query_folded = query.casefold().strip()
+    return (5 if query_folded in content.casefold() else 0) + len(_terms(query) & _terms(content))
+
+
+def _rank_memories(items: list[MemoryItem], query: str, limit: int) -> list[MemoryItem]:
+    if limit <= 0:
+        return []
+    if not query.strip():
+        return sorted(items, key=lambda item: (item.importance, item.updated_at), reverse=True)[:limit]
+    scored = [(item, _score_memory(item.content, query)) for item in items]
+    matches = [pair for pair in scored if pair[1] > 0]
+    if not matches and _is_cjk(query):
+        matches = scored
+    matches.sort(key=lambda pair: (pair[1], pair[0].importance, pair[0].updated_at), reverse=True)
+    return [item for item, _ in matches[:limit]]
 
 
 class MemoryStore(Protocol):
@@ -61,7 +95,6 @@ class InMemoryMemoryStore:
     ) -> list[MemoryItem]:
         if limit <= 0:
             return []
-        terms = {term.lower() for term in query.split() if term}
         candidates = [
             item
             for item in self._items.values()
@@ -69,21 +102,7 @@ class InMemoryMemoryStore:
             and (memory_type is None or item.memory_type == memory_type)
             and not item.is_expired()
         ]
-        if terms:
-            candidates = [
-                item
-                for item in candidates
-                if terms & set(item.content.lower().split())
-            ]
-        candidates.sort(
-            key=lambda item: (
-                len(terms & set(item.content.lower().split())) if terms else 0,
-                item.importance,
-                item.updated_at,
-            ),
-            reverse=True,
-        )
-        return candidates[:limit]
+        return _rank_memories(candidates, query, limit)
 
     def delete(self, scope: MemoryScope, memory_id: str) -> None:
         item = self._items.get(memory_id)
@@ -160,27 +179,13 @@ class RedisMemoryStore:
     ) -> list[MemoryItem]:
         if limit <= 0:
             return []
-        terms = {term.lower() for term in query.split() if term}
         items = [
             item
             for item in self._all(scope)
             if (memory_type is None or item.memory_type == memory_type)
             and not item.is_expired()
         ]
-        if terms:
-            items = [
-                item for item in items
-                if terms & set(item.content.lower().split())
-            ]
-        items.sort(
-            key=lambda item: (
-                len(terms & set(item.content.lower().split())) if terms else 0,
-                item.importance,
-                item.updated_at,
-            ),
-            reverse=True,
-        )
-        return items[:limit]
+        return _rank_memories(items, query, limit)
 
     def delete(self, scope: MemoryScope, memory_id: str) -> None:
         self._client.hdel(self._scope_key(scope), memory_id)
@@ -341,17 +346,11 @@ class SQLiteMemoryStore:
         rows = self._connection.execute(
             f"SELECT * FROM memories WHERE {' AND '.join(clauses)} "
             "AND (expires_at IS NULL OR expires_at > ?) "
-            "ORDER BY importance DESC, updated_at DESC LIMIT ?",
-            [*params, utc_now(), limit * 5],
+            "ORDER BY importance DESC, updated_at DESC",
+            [*params, utc_now()],
         ).fetchall()
-        terms = {term.lower() for term in query.split() if term}
         items = [self._from_row(row) for row in rows]
-        if terms:
-            items.sort(
-                key=lambda item: len(terms & set(item.content.lower().split())),
-                reverse=True,
-            )
-        return items[:limit]
+        return _rank_memories(items, query, limit)
 
     def delete(self, scope: MemoryScope, memory_id: str) -> None:
         with self._connection:

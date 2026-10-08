@@ -25,6 +25,7 @@ class TaskState:
     final_answer: Any = None
     superstep_id: int = 0
     events: list[dict[str, Any]] = field(default_factory=list)
+    stop_reason: dict[str, Any] | None = None
 
     def __post_init__(self) -> None:
         self.status = TaskStatus(self.status)
