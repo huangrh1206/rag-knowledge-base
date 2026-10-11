@@ -8,10 +8,12 @@ from .planner import Planner, StaticPlanner
 from .scheduler import SuperstepScheduler
 from .policy import TaskPolicy
 from .graph import build_task_graph
+from .evaluator import CompletionEvaluator, Evaluation, Evaluator
 
 class TaskRuntime:
-    def __init__(self, *, planner: Planner | None = None, scheduler: SuperstepScheduler | None = None, checkpointer: Any | None = None, policy: TaskPolicy | None = None):
+    def __init__(self, *, planner: Planner | None = None, scheduler: SuperstepScheduler | None = None, checkpointer: Any | None = None, policy: TaskPolicy | None = None, evaluator: Evaluator | None = None):
         self.planner, self.scheduler, self.checkpointer, self.policy = planner, scheduler or SuperstepScheduler(), checkpointer or InMemorySaver(), policy or TaskPolicy()
+        self.evaluator = evaluator or CompletionEvaluator()
         self.graph = build_task_graph(self.planner or StaticPlanner([]), self.scheduler, checkpointer=self.checkpointer, max_supersteps=self.policy.max_supersteps)
         self._states: dict[str, TaskState] = {}
         self._paused: set[str] = set()
@@ -24,7 +26,10 @@ class TaskRuntime:
         if not task_id or not goal.strip(): raise ValueError("task_id and goal are required")
         if task_id in self._states: return self.resume(task_id)
         planner = self.planner or StaticPlanner(plan or [])
-        state = TaskState(task_id, goal); state.plan = planner.plan(goal); state.status = TaskStatus.RUNNING; self._states[task_id] = state
+        state = TaskState(task_id, goal)
+        state.plan = self._make_plan(planner, goal, state)
+        state.status = TaskStatus.RUNNING
+        self._states[task_id] = state
         return self._run(state)
     def resume(self, task_id: str, value: Any = None) -> TaskResult:
         if task_id not in self._states: raise KeyError(task_id)
@@ -68,7 +73,23 @@ class TaskRuntime:
             if not state.ready_steps:
                 state.status = TaskStatus.FAILED if state.failed_steps else TaskStatus.COMPLETED; break
             result = self.scheduler.run(state, state.ready_steps)
-            self.scheduler.merge(state, result); state.ready_steps = self.scheduler.find_ready(state)
+            self.scheduler.merge(state, result)
+            state.ready_steps = self.scheduler.find_ready(state)
+            evaluation = self.evaluator.evaluate(state.goal, state)
+            state.events.append({
+                "type": "evaluation",
+                "superstep_id": state.superstep_id - 1,
+                "sufficient": evaluation.sufficient,
+                "feedback": evaluation.feedback,
+            })
+            if not evaluation.sufficient and self.planner is not None:
+                proposed = self._make_plan(self.planner, state.goal, state, evaluation.constraints)
+                if not self._apply_replan(state, proposed):
+                    state.status = TaskStatus.FAILED
+                    state.error = evaluation.feedback or "planner made no progress"
+                    state.stop_reason = {"code": "planner_no_progress", "feedback": state.error}
+                    break
+                state.ready_steps = self.scheduler.find_ready(state)
             retryable = [s for s in state.plan if s.id in state.failed_steps and s.retry_count < max(s.max_retries, self.policy.max_retries)]
             for step in retryable:
                 state.failed_steps.remove(step.id); step.retry_count += 1; step.transition("ready"); state.retry_count += 1
@@ -90,3 +111,35 @@ class TaskRuntime:
             setattr(self.checkpointer, "_task_states", storage)
         storage[state.task_id] = state.to_dict()
     def _result(self, state): return TaskResult(state.task_id, state.status, state.final_answer, state.to_dict(), state.error)
+
+    def _make_plan(self, planner: Planner, goal: str, state: TaskState, constraints=None):
+        definitions = []
+        executor = getattr(self.scheduler, "executor", None)
+        registry = getattr(executor, "registry", None)
+        if registry is not None:
+            definitions = registry.definitions()
+        return planner.plan(
+            goal,
+            state=state.to_dict(),
+            tools=definitions,
+            constraints=constraints or {},
+        )
+
+    @staticmethod
+    def _apply_replan(state: TaskState, proposed) -> bool:
+        current = {step.id: step for step in state.plan}
+        changed = False
+        merged = []
+        for step in proposed:
+            existing = current.get(step.id)
+            if existing is not None and existing.status.value == "completed":
+                merged.append(existing)
+                continue
+            if existing is None or existing.__dict__ != step.__dict__:
+                changed = True
+            merged.append(step)
+        if any(step.id not in {item.id for item in proposed} for step in state.plan if step.status.value == "completed"):
+            merged = [step for step in state.plan if step.status.value == "completed"] + merged
+        state.plan = merged
+        state.events.append({"type": "replanned", "step_ids": [step.id for step in merged]})
+        return changed or bool(merged)

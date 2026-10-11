@@ -58,6 +58,8 @@ class Settings:
     task_tenant_id: str = "default"
     task_user_id: str = "cli-user"
     task_agent_id: str = "general-task-agent"
+    amap_mcp_url: str = "https://mcp.amap.com/mcp"
+    amap_api_key: str = ""
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -134,6 +136,8 @@ class Settings:
             task_tenant_id=os.getenv("TASK_TENANT_ID", "default").strip(),
             task_user_id=os.getenv("TASK_USER_ID", "cli-user").strip(),
             task_agent_id=os.getenv("TASK_AGENT_ID", "general-task-agent").strip(),
+            amap_mcp_url=os.getenv("AMAP_MCP_URL", "https://mcp.amap.com/mcp").strip(),
+            amap_api_key=os.getenv("AMAP_API_KEY", "").strip(),
         )
 
         if settings.chunk_size <= 0:
@@ -218,6 +222,8 @@ class Settings:
             raise ValueError("memory minimum confidence must be between 0 and 1")
         if not settings.task_tenant_id or not settings.task_user_id or not settings.task_agent_id:
             raise ValueError("task memory identity fields must be non-empty")
+        if not settings.amap_mcp_url:
+            raise ValueError("AMAP_MCP_URL cannot be empty")
 
         if settings.request_timeout <= 0:
             raise ValueError(

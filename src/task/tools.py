@@ -64,15 +64,34 @@ class TaskToolRegistry:
 
     def names(self) -> list[str]: return list(self._tools)
     def definitions(self) -> list[dict[str, Any]]:
-        return [{"name": t.name, "description": getattr(t, "description", "")} for t in self._tools.values()]
+        return [
+            {
+                "name": t.name,
+                "description": getattr(t, "description", ""),
+                "parameters": getattr(t, "parameters", None),
+            }
+            for t in self._tools.values()
+        ]
 
 
 class MCPToolAdapter:
     """Adapt an MCP client exposing ``call_tool(name, arguments)``."""
-    def __init__(self, client: Any, name: str, description: str = "") -> None:
-        self.client, self.name, self.description = client, name, description
+    def __init__(
+        self,
+        client: Any,
+        name: str,
+        description: str = "",
+        parameters: dict[str, Any] | None = None,
+        *,
+        remote_name: str | None = None,
+    ) -> None:
+        self.client = client
+        self.name = name
+        self.remote_name = remote_name or name
+        self.description = description
+        self.parameters = parameters
     def invoke(self, arguments: dict[str, Any]) -> Any:
-        return self.client.call_tool(self.name, arguments)
+        return self.client.call_tool(self.remote_name, arguments)
 
 
 class TaskToolExecutor:

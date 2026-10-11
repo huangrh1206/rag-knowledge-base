@@ -26,6 +26,7 @@ from src.task.runtime import TaskRuntime
 from src.task.scheduler import SuperstepScheduler
 from src.task.tools import TaskToolExecutor, TaskToolRegistry
 from src.task.chat import TaskChatResponder
+from src.task.amap import register_amap_tools
 
 def configure_logging() -> None:
     log_dir = Path("log")
@@ -120,7 +121,42 @@ def _run_task_chat(
     session_id: str = "default",
 ) -> int:
     registry = GeneralTaskAgent().registry
-    responder = TaskChatResponder(client.chat.completions, settings.chat_model)
+    if settings.amap_api_key:
+        try:
+            registered = register_amap_tools(
+                registry,
+                url=settings.amap_mcp_url,
+                api_key=settings.amap_api_key,
+                timeout=settings.request_timeout,
+            )
+            logging.info("registered AMap MCP tools: %s", ", ".join(registered) or "none")
+        except Exception as exc:
+            logging.warning("AMap MCP unavailable; continuing with local tools: %s", exc)
+    def emit_event(name: str, payload: dict) -> None:
+        labels = {
+            "model_requested": "正在请求模型",
+            "tool_requested": "准备调用工具",
+            "tool_started": "开始执行工具",
+            "tool_completed": "工具执行完成",
+            "tool_failed": "工具执行失败",
+            "final_answer": "正在整理最终答案",
+        }
+        label = labels.get(name, name)
+        tool = payload.get("tool")
+        suffix = f" [{tool}]" if tool else ""
+        print(f"\n[task] {label}{suffix}")
+
+    try:
+        responder = TaskChatResponder(
+            client.chat.completions,
+            settings.chat_model,
+            tool_definitions=registry.definitions(),
+            executor=TaskToolExecutor(registry, timeout=settings.request_timeout),
+            event_callback=emit_event,
+        )
+    except TypeError:
+        # Preserve compatibility with lightweight test doubles and older adapters.
+        responder = TaskChatResponder(client.chat.completions, settings.chat_model)
     conversation = ConversationContext.from_settings(
         MemoryScope(
             tenant_id=settings.task_tenant_id,
