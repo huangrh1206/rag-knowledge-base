@@ -4,6 +4,23 @@ from collections.abc import Callable, Mapping
 from typing import Any, Protocol
 
 
+def default_summarizer(messages: list[dict[str, Any]]) -> str:
+    """Create a compact extractive summary without another model/network call."""
+    parts: list[str] = []
+    for message in messages:
+        role = str(message.get("role", "message"))
+        content = str(message.get("content", "")).strip()
+        if not content and message.get("tool_calls"):
+            content = "tool calls: " + ", ".join(
+                str(call.get("function", {}).get("name", call.get("name", "tool")))
+                for call in message.get("tool_calls", [])
+                if isinstance(call, Mapping)
+            )
+        if content:
+            parts.append(f"{role}: {content}")
+    return "\n".join(parts)
+
+
 class TokenEstimator(Protocol):
     def estimate(self, message: Mapping[str, Any]) -> int: ...
 

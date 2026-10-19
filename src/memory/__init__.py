@@ -13,6 +13,7 @@ from src.memory.short_term import (
     ApproximateTokenEstimator,
     ShortTermMemory,
     TokenEstimator,
+    default_summarizer,
 )
 from src.memory.store import (
     InMemoryMemoryStore,
@@ -36,5 +37,6 @@ __all__ = [
     "ShortTermMemory",
     "ApproximateTokenEstimator",
     "TokenEstimator",
+    "default_summarizer",
     "RuleBasedMemoryExtractor",
 ]

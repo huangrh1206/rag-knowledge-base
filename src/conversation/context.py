@@ -9,7 +9,7 @@ from src.memory.long_term import (
     RuleBasedMemoryExtractor,
 )
 from src.memory.models import MemoryScope
-from src.memory.short_term import ShortTermMemory
+from src.memory.short_term import ShortTermMemory, default_summarizer
 from src.conversation.store import ConversationStore, SQLiteConversationStore
 
 
@@ -40,6 +40,7 @@ class ConversationContext:
                 max_messages=settings.memory_max_messages,
                 max_chars=settings.memory_max_chars,
                 max_tokens=settings.memory_max_tokens,
+                summarizer=default_summarizer if settings.memory_summarization_enabled else None,
             ),
             long_term=LongTermMemory(
                 create_memory_store(settings),

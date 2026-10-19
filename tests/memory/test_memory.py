@@ -179,3 +179,34 @@ def test_summary_is_retained_across_reads_and_cleared_explicitly() -> None:
 
     memory.clear()
     assert memory.messages() == []
+
+
+def test_default_summarizer_is_injected_by_production_context(tmp_path) -> None:
+    from src.config import Settings
+    from src.conversation import ConversationContext
+    from src.memory.models import MemoryScope
+
+    settings = Settings(
+        api_key="test-key",
+        base_url=None,
+        chat_model="chat-model",
+        embedding_model="embedding-model",
+        memory_sqlite_path=tmp_path / "memory.sqlite3",
+        memory_max_messages=2,
+        memory_max_chars=10_000,
+        memory_max_tokens=1_000,
+    )
+    context = ConversationContext.from_settings(
+        MemoryScope("tenant", "user"),
+        settings=settings,
+        session_id="summary-session",
+    )
+    context.short_term.extend([
+        {"role": "user", "content": "old question"},
+        {"role": "assistant", "content": "old answer"},
+        {"role": "user", "content": "latest question"},
+    ])
+
+    messages = context.short_term.messages()
+    assert any("Conversation summary:" in str(item.get("content")) for item in messages)
+    assert "old question" in "\n".join(str(item.get("content")) for item in messages)

@@ -54,6 +54,7 @@ class Settings:
     memory_max_messages: int = 20
     memory_max_chars: int = 24_000
     memory_max_tokens: int | None = 6_000
+    memory_summarization_enabled: bool = True
     memory_min_confidence: float = 0.6
     task_tenant_id: str = "default"
     task_user_id: str = "cli-user"
@@ -132,6 +133,10 @@ class Settings:
             memory_max_messages=int(os.getenv("MEMORY_MAX_MESSAGES", 20)),
             memory_max_chars=int(os.getenv("MEMORY_MAX_CHARS", 24_000)),
             memory_max_tokens=int(os.getenv("MEMORY_MAX_TOKENS", 6_000)),
+            memory_summarization_enabled=parse_bool(
+                os.getenv("MEMORY_SUMMARIZATION_ENABLED", "true"),
+                "MEMORY_SUMMARIZATION_ENABLED",
+            ),
             memory_min_confidence=float(os.getenv("MEMORY_MIN_CONFIDENCE", 0.6)),
             task_tenant_id=os.getenv("TASK_TENANT_ID", "default").strip(),
             task_user_id=os.getenv("TASK_USER_ID", "cli-user").strip(),
